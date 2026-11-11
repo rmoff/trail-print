@@ -5,7 +5,7 @@ import { loadDem } from './dem.js';
 import { fetchWater } from './water.js';
 import { Preview, loadIntroModel } from './preview.js';
 import { loadSaved, save, forget } from './saved.js';
-import { PRINTERS, fits, towerRoom, largestFit, footprint } from './plate.js';
+import { PRINTERS, fits, towerRoom, largestFit, footprint, tilePlacement } from './plate.js';
 
 const $ = id => document.getElementById(id);
 const layout = document.querySelector('.layout');
@@ -61,10 +61,9 @@ function showPlate() {
     note = !best || best < +$('size').min ? 'No room for the purge tower on this plate. Print in one colour.' : 'No room for the purge tower. Try Fit to plate, or one colour.';
     warn = true;
   }
-  else if (fit === 'turned' && room === 'corner') note = 'In the slicer, rotate it 90° and move it to a corner.';
   else if (fit === 'turned') note = 'In the slicer, rotate it 90° to fit.';
   else if (room === 'turned') note = 'In the slicer, rotate it 90° to make room for the purge tower.';
-  else if (room === 'corner') note = 'In the slicer, move it to a corner to make room for the purge tower.';
+  else if (room === 'drag') note = 'In the slicer, drag the purge tower to the corner shown.';
   const cn = $('canvas-note');
   cn.hidden = !note;
   cn.textContent = note || '';
@@ -72,8 +71,9 @@ function showPlate() {
   // Screen readers: an always-present live region, also linked from the size slider.
   if ($('fit-live').textContent !== (note || '')) $('fit-live').textContent = note || '';
   if (!preview) return;
-  const tower = room === 'centred' ? towerRoom(o.shape, o.sizeMm, pl).tower : null;
-  preview.setPlate(pl, tower, { tooBig: fit === 'no' });
+  const placed = room && ['centred', 'corner', 'drag'].includes(room) ? towerRoom(o.shape, o.sizeMm, pl) : null;
+  preview.setPlate(pl, placed?.tower || null, { tooBig: fit === 'no' });
+  preview.setTileOffset(placed?.tile || { x: 0, y: 0 });
 }
 const EXPORT_BUTTONS = ['dl-3mf', 'dl-stl', 'dl-prusa'];
 /** Downloads are only offered for a model that matches the current file and settings. */
@@ -416,7 +416,9 @@ function exportFile(format, pl) {
   return new Promise((resolve, reject) => {
     const id = ++exportId;
     pending.set(id, { resolve, reject });
-    worker.postMessage({ type: 'export', id, format, bedW: pl.w, bedD: pl.d, buildId: state.built?.id });
+    const o = options();
+    const t = tilePlacement(o.shape, o.sizeMm, pl, o.colourMode !== 'one');
+    worker.postMessage({ type: 'export', id, format, bedW: pl.w, bedD: pl.d, tileX: t.x, tileY: t.y, buildId: state.built?.id });
   });
 }
 function fileBase() {

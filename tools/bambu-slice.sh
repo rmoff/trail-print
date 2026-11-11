@@ -13,7 +13,7 @@ fi
 FL="$P/fil-$noz-1.json"; for ((i=2;i<=nf;i++)); do FL="$FL;$P/fil-$noz-$i.json"; done
 mkdir -p "$out"
 timeout 900 flatpak run --filesystem="$(dirname "$in")" --filesystem="$out" --filesystem="$P" com.bambulab.BambuStudio \
-  --slice 0 --outputdir "$out" --load-settings "$M;$PR" --load-filaments "$FL" "$in" > "$out/slice.log" 2>&1
+  --slice 0 --arrange 0 --outputdir "$out" --load-settings "$M;$PR" --load-filaments "$FL" "$in" > "$out/slice.log" 2>&1
 echo "exit $?"
 python3 -I - "$out/result.json" <<'PY'
 import json, sys

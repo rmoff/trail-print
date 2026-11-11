@@ -119,6 +119,17 @@ export class Preview {
     this.dirty = true; // the view is not re-framed: zoom stays where the visitor left it
   }
 
+  /** Where the tile sits on the plate (mm from the plate centre, x east, y north). */
+  setTileOffset(off) {
+    this.tileOffset = off || { x: 0, y: 0 };
+    this.placeTile();
+  }
+  placeTile() {
+    const o = this.currentView === 'under' ? { x: 0, y: 0 } : (this.tileOffset || { x: 0, y: 0 });
+    this.group.position.set(o.x, 0, -o.y); // model y (north) is scene -z
+    this.dirty = true;
+  }
+
   /** From below the plate, fade it so the text on the tile's underside shows through. */
   seeThroughPlate() {
     if (!this.plateMaterials) return;
@@ -162,6 +173,7 @@ export class Preview {
 
   view(which) {
     this.currentView = which;
+    this.placeTile(); // the Underside view turns the tile over in the middle
     // Back off further on narrow (portrait) previews so the whole plate stays in view.
     const narrow = Math.max(1, 1.25 / (this.camera.aspect || 1));
     const d = Math.max(this.size, (this.plateSize || 0) * 0.9) * 2.3 * narrow;

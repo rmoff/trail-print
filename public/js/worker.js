@@ -48,7 +48,7 @@ self.onmessage = e => {
     else if (m.type === 'export') {
       if (!last) throw new Error('Nothing built yet.');
       if (m.buildId != null && m.buildId !== last.id) throw new Error('Still updating. Try again.');
-      const opts = { title: last.title, bedW: m.bedW || 180, bedD: m.bedD || 180 };
+      const opts = { title: last.title, bedW: m.bedW || 180, bedD: m.bedD || 180, tileX: m.tileX || 0, tileY: m.tileY || 0 };
       const bytes = m.format === 'stl' ? writeStl(last.parts)
         : m.format === 'prusa' ? write3mfPrusa(last.parts, opts) : write3mfBambu(last.parts, opts);
       postMessage({ type: 'exported', id: m.id, format: m.format, bytes }, [bytes.buffer]);

@@ -67,7 +67,7 @@ function bedOffset(parts, opts) {
     minX = Math.min(minX, b.min[0]); minY = Math.min(minY, b.min[1]);
     maxX = Math.max(maxX, b.max[0]); maxY = Math.max(maxY, b.max[1]);
   }
-  return [bw / 2 - (minX + maxX) / 2, bd / 2 - (minY + maxY) / 2];
+  return [bw / 2 + (opts.tileX || 0) - (minX + maxX) / 2, bd / 2 + (opts.tileY || 0) - (minY + maxY) / 2];
 }
 
 const toBytes = chunks => {

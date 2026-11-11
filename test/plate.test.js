@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PRINTERS, fits, towerRoom, largestWithTower, largestFit, footprint, EDGE } from '../public/js/plate.js';
+import { PRINTERS, fits, towerRoom, largestWithTower, largestFit, footprint, EDGE, tilePlacement } from '../public/js/plate.js';
 
 const a1mini = PRINTERS.find(p => p.id === 'a1mini');
 const mk4s = PRINTERS.find(p => p.id === 'mk4s');
@@ -20,10 +20,17 @@ test('fit on the plate', () => {
 test('purge tower room matches what Bambu Studio sliced on an A1 mini', () => {
   // 11 Nov 2026: a 150 mm hexagon sliced with the tower in a free corner;
   // a 150 mm circle collided with the tower.
-  assert.equal(towerRoom('hexagon', 150, a1mini).room, 'centred');
-  assert.notEqual(towerRoom('circle', 150, a1mini).room, 'centred');
+  assert.ok(['centred', 'corner'].includes(towerRoom('hexagon', 150, a1mini).room));
   assert.equal(towerRoom('square', 175, a1mini).room, 'none');
-  assert.ok(largestWithTower('hexagon', a1mini) >= 150);
+  // 11 Nov 2026, Bambu Studio command line with the tower at the A1 mini's default (back
+  // left) and --arrange 0: these sizes, placed by tilePlacement, slice without collisions.
+  assert.equal(largestWithTower('hexagon', a1mini), 160);
+  assert.equal(largestWithTower('square', a1mini), 125);
+  assert.equal(largestWithTower('circle', a1mini), 150);
+  const sq = towerRoom('square', 125, a1mini);
+  assert.equal(sq.room, 'corner');
+  assert.ok(sq.tile.x > 0 && sq.tile.y < 0, 'tile moved front-right, away from the back-left tower');
+  assert.deepEqual(tilePlacement('square', 125, a1mini, false), { x: 0, y: 0 }, 'one colour: no tower, tile in the middle');
   // 230 mm hexagon on an MK4S (250 x 210) only fits turned; the tower then has room.
   assert.equal(towerRoom('hexagon', 230, mk4s).room, 'turned');
 });
@@ -35,10 +42,12 @@ test('Fit to plate keeps the edge clearance in the orientation it uses', () => {
   for (const shape of ['hexagon', 'circle', 'square']) {
     const s = largestFit(shape, narrow, true);
     if (s == null) continue;
-    const room = towerRoom(shape, s, narrow).room;
-    assert.ok(room === 'centred' || room === 'turned', `${shape} ${s}`);
+    const r = towerRoom(shape, s, narrow);
+    assert.notEqual(r.room, 'none', `${shape} ${s}`);
     const f = footprint(shape, s);
-    const [w, d] = room === 'turned' ? [narrow.d, narrow.w] : [narrow.w, narrow.d];
-    assert.ok(f.w <= w - 2 * EDGE && f.d <= d - 2 * EDGE, `${shape} ${s} breaks the edge clearance`);
+    const [w, d] = r.room === 'turned' ? [narrow.d, narrow.w] : [narrow.w, narrow.d];
+    const t = r.tile || { x: 0, y: 0 };
+    // The tile (wherever it is placed) stays EDGE clear of every side of the plate.
+    assert.ok(Math.abs(t.x) + f.w / 2 <= w / 2 - EDGE + 1e-9 && Math.abs(t.y) + f.d / 2 <= d / 2 - EDGE + 1e-9, `${shape} ${s} breaks the edge clearance`);
   }
 });
