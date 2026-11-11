@@ -37,7 +37,7 @@
 
     <div class="stage-notes" id="stage-notes" hidden>
       <div id="plate-label" class="plate-label"></div>
-      <div id="canvas-note" class="canvas-note" role="status" aria-live="polite" hidden></div>
+      <div id="canvas-note" class="canvas-note" aria-hidden="true" hidden></div>
     </div>
 
     <div id="view-buttons" class="view-buttons" hidden>
@@ -68,11 +68,12 @@
     <fieldset class="group">
       <legend>Size</legend>
       <div class="range-row">
-        <input type="range" id="size" min="80" max="350" step="5" value="150" aria-describedby="size-note" aria-label="Size in millimetres">
+        <input type="range" id="size" min="80" max="350" step="5" value="150" aria-describedby="size-note fit-live" aria-label="Size in millimetres">
         <output id="size-out">150 mm</output>
         <button type="button" class="chip" id="fit-plate">Fit to plate</button>
       </div>
       <p class="note" id="size-note"></p>
+      <p class="sr-only" id="fit-live" aria-live="polite"></p>
     </fieldset>
 
     <fieldset class="group">

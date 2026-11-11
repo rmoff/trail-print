@@ -50,6 +50,7 @@ function showPlate() {
   let note = null, warn = false;
   if (fit === 'no') { note = 'Too big for this plate. Make it smaller, or use Fit to plate.'; warn = true; }
   else if (room === 'none') { note = 'No room on this plate for the purge tower that colour changes need. Make it smaller, use Fit to plate, or print in one colour.'; warn = true; }
+  else if (fit === 'turned' && room === 'corner') note = 'Turn the tile a quarter turn and move it into a corner in the slicer, so it fits with room for the purge tower.';
   else if (fit === 'turned') note = 'Turn the tile a quarter turn in the slicer to fit this plate.';
   else if (room === 'turned') note = 'Turn the tile a quarter turn in the slicer to leave room for the purge tower.';
   else if (room === 'corner') note = 'Move the tile into a corner in the slicer to leave room for the purge tower.';
@@ -57,6 +58,8 @@ function showPlate() {
   cn.hidden = !note;
   cn.textContent = note || '';
   cn.classList.toggle('warn', warn);
+  // Screen readers: an always-present live region, also linked from the size slider.
+  if ($('fit-live').textContent !== (note || '')) $('fit-live').textContent = note || '';
   if (!preview) return;
   const tower = room === 'centred' ? towerRoom(o.shape, o.sizeMm, pl).tower : null;
   preview.setPlate(pl, tower, { tooBig: fit === 'no' });
