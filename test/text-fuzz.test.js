@@ -82,3 +82,12 @@ test('a title shrunk to fit is not also shortened (rounding)', () => {
     }
   }
 });
+
+test('the second line falls back to the short date before being cut', () => {
+  // At 110 mm the long date doesn't fit but the short one does.
+  const text = { title: 'Morning Trail Run', subtitle: 'Kettlewell, 29 September 2026', subtitleShort: 'Kettlewell, 29 Sept 2026', stats: '13.7 km' };
+  const t = underside(font, SHAPES.hexagon, 110, 0.4, text);
+  assert.equal(t.notes.length, 0, JSON.stringify(t.notes));
+  const long = underside(font, SHAPES.hexagon, 110, 0.4, { ...text, subtitleShort: null });
+  assert.ok(long.notes.some(n => n.line === 1 && n.kind === 'shortened'), 'without the short form the line is cut');
+});

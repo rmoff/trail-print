@@ -270,7 +270,8 @@ export function buildModel(o) {
   const shape = o.shape;
   const R = shape.sizeToR(o.sizeMm);
   const s = R / o.fit.radius; // mm per metre
-  const N = Math.min(MAX_RINGS, Math.max(20, Math.ceil(R / noz.spacing)));
+  // o.spacing (mm) overrides the nozzle's mesh spacing: used for the light start-screen preview.
+  const N = Math.min(MAX_RINGS, Math.max(20, Math.ceil(R / (o.spacing || noz.spacing))));
   const L = buildLattice(shape, R, N);
   const toM = (x, y) => [x / s + o.fit.cx, y / s + o.fit.cy];
   const progress = o.progress || (() => {});
@@ -470,8 +471,8 @@ export function buildModel(o) {
   progress(0.7, 'Building route');
   const route = new Mesh('Route');
   const w = noz.routeWidth, half = w / 2;
-  const routeMm = simplify(o.route.map(([xm, ym]) => [(xm - o.fit.cx) * s, (ym - o.fit.cy) * s]), noz.spacing * 0.3);
-  const step = noz.spacing;
+  const routeMm = simplify(o.route.map(([xm, ym]) => [(xm - o.fit.cx) * s, (ym - o.fit.cy) * s]), (o.spacing || noz.spacing) * 0.3);
+  const step = o.spacing || noz.spacing;
   // Heights depend on position only (not direction), so neighbouring pieces and the
   // round joints meet flush instead of stepping.
   const ringH = (cx, cy, r) => {

@@ -14,7 +14,7 @@
 <body>
 <header class="masthead">
   <h1>Trail Print</h1>
-  <p>Turn a run into a 3D-printable map tile.</p>
+  <p>Your run, immortalised in filament.</p>
 </header>
 
 <main class="layout">
@@ -22,6 +22,7 @@
     <div id="viewer" class="viewer"></div>
 
     <div id="dropzone" class="dropzone">
+      <button type="button" id="intro" class="intro" aria-label="Open the example: Wharfedale Three Peaks"></button>
       <div class="drop-card">
         <p class="drop-title for-mouse">Drop a GPX file here</p>
         <label class="button primary file-button">
@@ -68,25 +69,25 @@
       </div>
     </fieldset>
 
-    <fieldset class="group">
-      <legend>Size</legend>
-      <div class="range-row">
-        <input type="range" id="size" min="80" max="350" step="5" value="150" aria-describedby="size-note fit-live" aria-label="Size in millimetres">
-        <output id="size-out">150 mm</output>
-        <button type="button" class="chip" id="fit-plate">Fit to plate</button>
-      </div>
-      <p class="note" id="size-note"></p>
-      <p class="sr-only" id="fit-live" aria-live="polite"></p>
-    </fieldset>
-
-    <fieldset class="group">
-      <legend>Colours</legend>
-      <div class="segmented compact" role="radiogroup">
+    <details class="section" id="sec-size">
+      <summary><span class="sec-title">Size and colours</span><span class="sec-value" id="sum-size"></span></summary>
+      <div class="sec-body">
+        <label class="sub-label" for="size">Size</label>
+        <div class="range-row">
+          <input type="range" id="size" min="80" max="350" step="5" value="150" aria-describedby="size-note fit-live">
+          <output id="size-out">150 mm</output>
+          <button type="button" class="chip" id="fit-plate">Fit to plate</button>
+        </div>
+        <p class="note" id="size-note"></p>
+        <p class="sr-only" id="fit-live" aria-live="polite"></p>
+        <p class="sub-label" id="colours-label">Colours</p>
+        <div class="segmented compact" role="radiogroup" aria-labelledby="colours-label">
         <label title="Land, water, route, text. Needs a multi-filament printer."><input type="radio" name="colours" value="full" checked><span><span class="sws"><i class="sw" style="--c:#3fae4a"></i><i class="sw" style="--c:#2f8fdc"></i><i class="sw" style="--c:#d8322a"></i><i class="sw" style="--c:#f4f4f0"></i></span>Four</span></label>
         <label title="Land; route and text."><input type="radio" name="colours" value="two"><span><span class="sws"><i class="sw" style="--c:#3fae4a"></i><i class="sw" style="--c:#d8322a"></i></span>Two</span></label>
         <label title="Any printer. Text is engraved."><input type="radio" name="colours" value="one"><span><span class="sws"><i class="sw" style="--c:#c9c4b8"></i></span>One</span></label>
+        </div>
       </div>
-    </fieldset>
+    </details>
 
     <details class="section" id="sec-printer">
       <summary><span class="sec-title">Printer</span><span class="sec-value" id="sum-printer"></span></summary>

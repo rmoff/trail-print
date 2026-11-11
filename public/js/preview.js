@@ -3,8 +3,35 @@
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 
+/** Read the start-screen model (public/demo/intro.bin, made by tools/make-intro-model.mjs). */
+export async function loadIntroModel(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`intro model ${res.status}`);
+  const buf = await res.arrayBuffer();
+  const dv = new DataView(buf);
+  if (String.fromCharCode(...new Uint8Array(buf, 0, 4)) !== 'TPI1') throw new Error('intro model: bad header');
+  const n = dv.getUint32(4, true);
+  let o = 8;
+  const parts = [];
+  for (let k = 0; k < n; k++) {
+    const colour = '#' + [0, 1, 2].map(i => dv.getUint8(o + i).toString(16).padStart(2, '0')).join('');
+    const scale = dv.getFloat32(o + 4, true), nv = dv.getUint32(o + 8, true), nt = dv.getUint32(o + 12, true);
+    o += 16;
+    const q = new Int16Array(buf.slice(o, o + nv * 6));
+    o += nv * 6 + ((nv * 6) % 4 ? 2 : 0);
+    const indices = new Uint32Array(new Uint16Array(buf.slice(o, o + nt * 6)));
+    o += nt * 6 + ((nt * 6) % 4 ? 2 : 0);
+    const positions = new Float32Array(q.length);
+    for (let i = 0; i < q.length; i++) positions[i] = q[i] * scale;
+    parts.push({ key: `intro${k}`, name: `intro${k}`, colour, positions, indices });
+  }
+  return parts;
+}
+
 export class Preview {
-  constructor(container) {
+  /** spin: turn slowly on its own (start screen); not if the visitor prefers reduced motion. */
+  constructor(container, { spin = false } = {}) {
+    this.spin = spin && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.container = container;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
@@ -29,13 +56,16 @@ export class Preview {
     this.flip.add(this.group);
     this.scene.add(this.flip);
     this.size = 150;
-    new ResizeObserver(() => this.resize()).observe(container);
+    this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.resizeObserver.observe(container);
     this.resize();
     // Draw only when something changed (saves battery while the page sits idle).
     this.dirty = true;
     this.controls.addEventListener('change', () => { this.dirty = true; });
     const loop = () => {
       this.controls.update();
+      if (this.spin && this.group.children.length) { this.flip.rotation.y += 0.004; this.dirty = true; }
+      this.seeThroughPlate();
       if (this.dirty) { this.dirty = false; this.renderer.render(this.scene, this.camera); }
       this.raf = requestAnimationFrame(loop);
     };
@@ -63,7 +93,7 @@ export class Preview {
     const g = new THREE.Group();
     g.rotation.x = -Math.PI / 2; // same axes as the model: x east, y north, z up
     const slab = new THREE.Mesh(new THREE.BoxGeometry(plate.w, plate.d, 2),
-      new THREE.MeshStandardMaterial({ color: tooBig ? 0x6e2420 : 0x30353a, roughness: 0.85 }));
+      new THREE.MeshStandardMaterial({ color: tooBig ? 0x6e2420 : 0x30353a, roughness: 0.85, transparent: true }));
     slab.position.z = -1.05;
     g.add(slab);
     const pts = [];
@@ -71,7 +101,9 @@ export class Preview {
     for (let y = 10; y < plate.d; y += 10) pts.push(-plate.w / 2, y - plate.d / 2, 0, plate.w / 2, y - plate.d / 2, 0);
     const grid = new THREE.BufferGeometry();
     grid.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    g.add(new THREE.LineSegments(grid, new THREE.LineBasicMaterial({ color: tooBig ? 0x9a3a33 : 0x4d555c })));
+    g.add(new THREE.LineSegments(grid, new THREE.LineBasicMaterial({ color: tooBig ? 0x9a3a33 : 0x4d555c, transparent: true })));
+    this.plateMaterials = [slab.material, g.children[g.children.length - 1].material];
+    this.plateBelow = null; // re-applied on the next frame
     if (tower) {
       const box = new THREE.Mesh(new THREE.BoxGeometry(35, 35, 18),
         new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.28, depthWrite: false }));
@@ -83,6 +115,20 @@ export class Preview {
     this.plate = g;
     this.plateSize = Math.max(plate.w, plate.d);
     this.dirty = true; // the view is not re-framed: zoom stays where the visitor left it
+  }
+
+  /** From below the plate, fade it so the text on the tile's underside shows through. */
+  seeThroughPlate() {
+    if (!this.plateMaterials) return;
+    const below = this.camera.position.y < 0;
+    if (below === this.plateBelow) return;
+    this.plateBelow = below;
+    for (const m of this.plateMaterials) {
+      m.opacity = below ? 0.15 : 1;
+      m.depthWrite = !below;
+      m.needsUpdate = true;
+    }
+    this.dirty = true;
   }
 
   /** parts: [{ key, name, colour, positions, indices }] */
@@ -123,6 +169,17 @@ export class Preview {
     this.camera.lookAt(this.controls.target);
     this.controls.update();
     this.dirty = true;
+  }
+
+  /** Stop drawing and give the browser its graphics memory back. */
+  dispose() {
+    cancelAnimationFrame(this.raf);
+    this.resizeObserver.disconnect();
+    this.controls.dispose();
+    this.scene.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
+    this.renderer.dispose();
+    this.renderer.forceContextLoss();
+    this.renderer.domElement.remove();
   }
 
   snapshot() { return this.renderer.domElement.toDataURL('image/png'); }

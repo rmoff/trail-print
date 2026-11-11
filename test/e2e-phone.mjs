@@ -24,6 +24,7 @@ console.log('drag spins model:', (await cam()) !== before, '| page scrolled:', a
 const scrolled = await p.evaluate(() => { const el = document.querySelector('.panel-body'); el.scrollTop = 400; return [el.scrollTop, el.scrollHeight, el.clientHeight]; });
 console.log('panel scrolls (top, scrollH, clientH):', scrolled);
 // Tap through: colours, open text section, change title, download.
+await p.tap('#sec-size summary');
 await p.tap('label:has(> input[name=colours][value=two])');
 await p.tap('#sec-text summary');
 await p.fill('#t-title', 'Phone test');

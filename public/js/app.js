@@ -3,7 +3,7 @@ import { SHAPES, fitShape, makeProjection } from './geo.js';
 import { NOZZLES } from './model.js';
 import { loadDem } from './dem.js';
 import { fetchWater } from './water.js';
-import { Preview } from './preview.js';
+import { Preview, loadIntroModel } from './preview.js';
 import { loadSaved, save, forget } from './saved.js';
 import { PRINTERS, fits, towerRoom, largestFit, footprint } from './plate.js';
 
@@ -82,7 +82,7 @@ function status(text, kind = 'busy') {
 }
 
 // ---------- reading the file ----------
-async function loadFile(file, restoredText = null, ticket = ++loadTicket) {
+async function loadFile(file, restoredText = null, ticket = ++loadTicket, preset = null) {
   try {
     const text = await file.text();
     if (ticket !== loadTicket) return; // a newer choice has been made since
@@ -112,14 +112,21 @@ async function loadFile(file, restoredText = null, ticket = ++loadTicket) {
     state.textEdited = { title: false, sub: false, stats: false };
     const stats = trackStats(gpx.track);
     state.stats = stats;
-    const date = gpx.time ? new Date(gpx.time) : null;
-    state.dateText = date && !isNaN(date) ? date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+    // Date for the back: from the file's timestamps (or the preset). A short form
+    // ("29 Jun 2024") is used automatically when the long one doesn't fit.
+    const date = preset?.date ? new Date(`${preset.date}T12:00:00`) : gpx.time ? new Date(gpx.time) : null;
+    const ok = date && !isNaN(date);
+    state.dateISO = ok ? (preset?.date || gpx.time) : null;
+    state.dateText = ok ? date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+    state.dateShort = ok ? date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    state.place = preset?.place || '';
     $('run-name').textContent = gpx.name || file.name.replace(/\.gpx$/i, '');
     $('run-meta').textContent = [state.dateText, formatKm(stats.distance), stats.climb != null ? `${Math.round(stats.climb)} m climb` : null].filter(Boolean).join(', ');
     $('run-summary').hidden = false;
     setText('title', gpx.name || 'My run');
-    setText('sub', state.dateText);
+    setText('sub', subDefault());
     setText('stats', statsLine());
+    hideIntro();
     layout.classList.add('has-run');
     document.body.classList.add('has-run');
     $('view-buttons').hidden = false;
@@ -131,13 +138,16 @@ async function loadFile(file, restoredText = null, ticket = ++loadTicket) {
         $({ title: 't-title', sub: 't-sub', stats: 't-stats' }[which]).value = value;
       }
     }
-    lookUpPlace(state.track[0], gpx);
+    if (!state.place) lookUpPlace(state.track[0], gpx);
     rebuild();
     remember();
   } catch (e) {
     if (ticket === loadTicket) status(e.message || 'Could not read that file.', 'error');
   }
 }
+
+/** Default second line: place and date (short month if `short`). */
+const subDefault = (short = false) => [state.place, short ? state.dateShort : state.dateText].filter(Boolean).join(', ');
 
 const formatKm = m => `${(m / 1000).toFixed(m < 10000 ? 2 : 1)} km`;
 const statsLine = () => [formatKm(state.stats.distance), state.stats.climb != null ? `${Math.round(state.stats.climb)} m climb` : null].filter(Boolean).join('  ·  ');
@@ -160,7 +170,9 @@ async function lookUpPlace([lat, lon], gpx) {
     const a = j.address || {};
     const place = a.village || a.town || a.city || a.hamlet || a.suburb || a.county || '';
     if (place && state.gpx === gpx) {
-      setText('sub', [place, state.dateText].filter(Boolean).join(', '));
+      state.place = place;
+      setText('sub', subDefault());
+      remember();
       scheduleRebuild();
     }
   } catch { /* the date alone is fine */ }
@@ -196,6 +208,7 @@ function updateNotes() {
   $('sum-printer').textContent = `${shortName}, ${o.nozzle} mm`;
   $('sum-terrain').textContent = `Hills ${exagText}, ${$('margin').value}% margin`;
   $('sum-text').textContent = $('t-title').value || 'None';
+  $('sum-size').textContent = `${o.sizeMm} mm, ${{ full: 'four', two: 'two', one: 'one' }[o.colourMode]} colour${o.colourMode === 'one' ? '' : 's'}`;
   renderSlots();
 }
 
@@ -320,7 +333,10 @@ async function rebuild() {
       type: 'build', id,
       origin: state.origin, track: state.track, markers: state.markers,
       dem: state.dem, water: state.water, options: o,
-      text: { title: $('t-title').value, subtitle: $('t-sub').value, stats: $('t-stats').value },
+      text: {
+        title: $('t-title').value, subtitle: $('t-sub').value, stats: $('t-stats').value,
+        subtitleShort: !state.textEdited.sub && state.dateShort !== state.dateText ? subDefault(true) : null,
+      },
     });
   } catch (e) {
     if (id === state.buildId) status(`Could not build the model: ${e.message}`, 'error');
@@ -431,16 +447,18 @@ function remember() {
     inputs: Object.fromEntries(SETTING_INPUTS.map(id => [id, $(id).value])),
     radios: Object.fromEntries(SETTING_RADIOS.map(n => [n, document.querySelector(`input[name=${n}]:checked`).value])),
     exagAuto: $('exag-auto').checked,
+    place: state.place, date: state.dateISO,
     text: {
       values: { title: $('t-title').value, sub: $('t-sub').value, stats: $('t-stats').value },
       edited: { ...state.textEdited },
     },
   }); }, 400);
 }
+/** Restore the last run from this browser; returns false if there was nothing to restore. */
 async function restore() {
   const ticket = ++loadTicket;
   const s = await loadSaved();
-  if (!s?.gpxText || state.gpx || ticket !== loadTicket) return;
+  if (!s?.gpxText || state.gpx || ticket !== loadTicket) return false;
   for (const [id, v] of Object.entries(s.inputs || {})) if ($(id)) $(id).value = v;
   for (const [n, v] of Object.entries(s.radios || {})) {
     const el = document.querySelector(`input[name=${n}][value="${CSS.escape(String(v))}"]`);
@@ -448,7 +466,9 @@ async function restore() {
   }
   if (typeof s.exagAuto === 'boolean') $('exag-auto').checked = s.exagAuto;
   updateNotes();
-  await loadFile({ name: s.fileName || 'run.gpx', text: async () => s.gpxText }, s.text, ticket);
+  await loadFile({ name: s.fileName || 'run.gpx', text: async () => s.gpxText }, s.text, ticket,
+    s.place ? { place: s.place, date: s.date && /^\d{4}-\d{2}-\d{2}$/.test(s.date) ? s.date : null } : null);
+  return true;
 }
 $('forget').addEventListener('click', async () => {
   forgetting = true;            // nothing may save from here on (timers, place lookup, rebuilds)
@@ -461,7 +481,7 @@ $('forget').addEventListener('click', async () => {
 // ---------- example route ----------
 // The course of the Wharfedale Three Peaks fell race (Kettlewell, Yorkshire Dales): times and
 // heart rate stripped, track thinned. ?demo in the address opens straight into it.
-const DEMO = { url: 'demo/wharfedale-three-peaks.gpx', title: 'Wharfedale Three Peaks', sub: 'Upper Wharfedale, Yorkshire Dales' };
+const DEMO = { url: 'demo/wharfedale-three-peaks.gpx', title: 'Wharfedale Three Peaks', place: 'Kettlewell', date: '2024-06-29' };
 async function loadDemo() {
   const ticket = ++loadTicket;
   try {
@@ -470,13 +490,29 @@ async function loadDemo() {
     if (!res.ok) throw new Error(`example route ${res.status}`);
     const text = await res.text();
     if (ticket !== loadTicket) return;
-    await loadFile({ name: 'wharfedale-three-peaks.gpx', text: async () => text },
-      { values: { title: DEMO.title, sub: DEMO.sub }, edited: { title: false, sub: true } }, ticket);
+    await loadFile({ name: 'wharfedale-three-peaks.gpx', text: async () => text }, null, ticket,
+      { place: DEMO.place, date: DEMO.date });
   } catch (e) {
     if (ticket === loadTicket) status(`Couldn\u2019t load the example (${e.message}).`, 'error');
   }
 }
 $('try-demo').addEventListener('click', loadDemo);
+
+// The example, small and turning slowly, on the start screen so visitors see what they'd get.
+let intro = null;
+function showIntro() {
+  if (state.gpx || intro) return;
+  intro = new Preview($('intro'), { spin: true });
+  loadIntroModel('demo/intro.bin')
+    .then(parts => { if (intro && !state.gpx) intro.setParts(parts, 150); })
+    .catch(() => hideIntro()); // decoration only: the start card works without it
+}
+function hideIntro() {
+  if (!intro) return;
+  intro.dispose();
+  intro = null;
+}
+$('intro').addEventListener('click', loadDemo);
 
 // ---------- file input ----------
 $('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) loadFile(f); e.target.value = ''; });
@@ -501,7 +537,7 @@ if (params.has('demo')) {
   history.replaceState(null, '', location.pathname + (params.size ? `?${params}` : '') + location.hash);
   loadDemo();
 } else {
-  restore();
+  restore().then(loaded => { if (!loaded) showIntro(); });
 }
 // For automated tests: window.__trail exposes state.
 window.__trail = { state, loadFile };

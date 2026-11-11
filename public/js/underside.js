@@ -26,6 +26,10 @@ export function underside(fontObj, shape, sizeMm, nozzle, text) {
     if (worst <= limit) break;
     scale *= Math.max(0.5, (limit / worst) * 0.97);
   }
+  // The second line didn't fit: try it with the short date ("29 Jun 2024") before cutting it.
+  if (text.subtitleShort && result.notes.some(n => n.line === 1 && n.kind === 'shortened')) {
+    return underside(fontObj, shape, sizeMm, nozzle, { ...text, subtitle: text.subtitleShort, subtitleShort: null });
+  }
   return result;
 }
 

@@ -85,10 +85,18 @@ a { color: inherit; }
 
 .dropzone {
   position: absolute; inset: 0;
-  display: grid; place-items: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 20px;
   overflow-y: auto; /* short windows or large text: the card can scroll */
 }
+/* The example tile turning slowly above the start card; tap it to open the example. */
+.intro {
+  flex: 1 1 auto; align-self: stretch; min-height: 0; max-height: 560px;
+  border: 0; padding: 0; background: none; cursor: pointer; position: relative;
+}
+.intro:empty { flex-grow: 0; }
+.intro canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+@media (max-height: 520px) { .intro { display: none; } }
 .dropzone.dragging .drop-card { outline: 3px dashed var(--route); outline-offset: 6px; }
 .layout.has-run .dropzone { display: none; }
 .drop-card {
