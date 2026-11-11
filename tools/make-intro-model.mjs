@@ -11,9 +11,11 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { PNG } from 'pngjs';
-import { parseGpx } from '../public/js/gpx.js';
+import { parseGpx, trackStats } from '../public/js/gpx.js';
+import { parseFont } from '../public/js/text.js';
+import { underside } from '../public/js/underside.js';
 import { SHAPES, fitShape, makeProjection } from '../public/js/geo.js';
-import { buildModel, NOZZLES } from '../public/js/model.js';
+import { buildModel, NOZZLES, triangulate } from '../public/js/model.js';
 import { chooseZoom, tileRange, makeSampler, smooth, TILE_URL } from '../public/js/dem.js';
 import { fetchWater, makeWaterTest } from '../public/js/water.js';
 
@@ -54,10 +56,33 @@ const waterPolys = water.map(p => ({ rings: p.rings.map(ring => ring.map(([la, l
 const isWater = makeWaterTest(waterPolys, fit.cx - fit.radius, fit.cy - fit.radius, fit.cx + fit.radius, fit.cy + fit.radius, (SPACING / 2) * (fit.radius / R));
 
 
+// The back text, as the site would print it (letter curves coarser to keep the file small).
+const fontBuf = readFileSync(new URL('../public/vendor/fredoka-600.woff', import.meta.url));
+const font = parseFont(fontBuf.buffer.slice(fontBuf.byteOffset, fontBuf.byteOffset + fontBuf.byteLength));
+const st = trackStats(gpx.track);
+const text = { title: 'Wharfedale Three Peaks', subtitle: 'Kettlewell, 29 June 2024', stats: `${(st.distance / 1000).toFixed(1)} km  ·  ${Math.round(st.climb)} m climb` };
+const t = underside(font, SHAPE, SIZE, 0.4, text, { coarse: true });
+
 const model = buildModel({
   shape: SHAPE, sizeMm: SIZE, nozzle: 0.4, colourMode: 'full', exaggeration: null, baseMm: 4,
-  fit, elevation, isWater, route, markers: [route[0], route[route.length - 1]], glyphs: [], spacing: SPACING, // the spinning top view never shows the back
+  fit, elevation, isWater, route, markers: [route[0], route[route.length - 1]], glyphs: [], spacing: SPACING,
 });
+
+// The back text as a flat layer just under the base: looks the same from outside as the
+// printed pockets, at a fraction of the triangles (preview only; downloads are unaffected).
+{
+  const v = [], tri = [];
+  for (const g of t.glyphs) {
+    const rings = [g.outer, ...g.holes];
+    const idx = triangulate(rings);
+    if (!idx) continue;
+    const base = v.length / 3;
+    for (const r of rings) for (const [x, y] of r) v.push(x, y, -0.05);
+    // triangulate() gives counter-clockwise triangles; reverse them so they face down.
+    for (let i = 0; i < idx.length; i += 3) tri.push(base + idx[i], base + idx[i + 2], base + idx[i + 1]);
+  }
+  model.parts.push({ name: 'Back text', colour: '#f4f4f0', mesh: { v, t: tri } });
+}
 
 // Serialise.
 const chunks = [];

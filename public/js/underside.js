@@ -5,7 +5,7 @@ import { NOZZLES } from './model.js';
 import { layoutText } from './text.js';
 
 /** Layout of the underside text: returns glyphs + warnings. */
-export function underside(fontObj, shape, sizeMm, nozzle, text) {
+export function underside(fontObj, shape, sizeMm, nozzle, text, { coarse = false } = {}) {
   const noz = NOZZLES[nozzle] || NOZZLES[0.4];
   const R = shape.sizeToR(sizeMm);
   const inner = shape.circle ? R : R * Math.cos(Math.PI / shape.K);
@@ -20,7 +20,7 @@ export function underside(fontObj, shape, sizeMm, nozzle, text) {
       { text: text.title, size: titleSize },
       { text: text.subtitle, size: smallSize },
       { text: text.stats, size: smallSize },
-    ], { maxWidth: inner * 1.45 * Math.min(1, scale), minSize: noz.minFont });
+    ], { maxWidth: inner * 1.45 * Math.min(1, scale), minSize: noz.minFont, coarse });
     let worst = 0;
     for (const g of result.glyphs) for (const r of [g.outer, ...g.holes]) for (const [x, y] of r) worst = Math.max(worst, shapeNorm(shape, x, y));
     if (worst <= limit) break;
@@ -28,7 +28,7 @@ export function underside(fontObj, shape, sizeMm, nozzle, text) {
   }
   // The second line didn't fit: try it with the short date ("29 Jun 2024") before cutting it.
   if (text.subtitleShort && result.notes.some(n => n.line === 1 && n.kind === 'shortened')) {
-    return underside(fontObj, shape, sizeMm, nozzle, { ...text, subtitle: text.subtitleShort, subtitleShort: null });
+    return underside(fontObj, shape, sizeMm, nozzle, { ...text, subtitle: text.subtitleShort, subtitleShort: null }, { coarse });
   }
   return result;
 }

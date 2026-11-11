@@ -64,7 +64,8 @@ export class Preview {
     this.controls.addEventListener('change', () => { this.dirty = true; });
     const loop = () => {
       this.controls.update();
-      if (this.spin && this.group.children.length) { this.flip.rotation.y += 0.004; this.dirty = true; }
+      // Start screen: roll slowly over the north-south axis, so the back (and its text) comes round too.
+      if (this.spin && this.group.children.length) { this.flip.rotation.z += 0.005; this.dirty = true; }
       this.seeThroughPlate();
       if (this.dirty) { this.dirty = false; this.renderer.render(this.scene, this.camera); }
       this.raf = requestAnimationFrame(loop);

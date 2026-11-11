@@ -102,7 +102,7 @@ Put your own GPX files in `test/fixtures/` (git-ignored). `wrangler dev` does no
 files newly added under `public/`; restart it after adding one.
 
 The start screen shows a light, pre-built model of the example (`public/demo/intro.bin`,
-about 190 KB, no text). Rebuild it after changing the model code or the example:
+about 250 KB; the back text is a flat layer, not pockets). Rebuild it after changing the model code or the example:
 `node tools/make-intro-model.mjs`.
 
 `tools/bambu-slice.sh` slices a 3MF with Bambu Studio's command line (Flatpak) for an

@@ -7,10 +7,10 @@ export function parseFont(arrayBuffer) {
   return opentype.parse(arrayBuffer);
 }
 
-function flatten(commands, size) {
+function flatten(commands, size, coarse = false) {
   const rings = [];
   let ring = null, px = 0, py = 0;
-  const steps = Math.max(4, Math.min(16, Math.round(size * 1.5)));
+  const steps = coarse ? 3 : Math.max(4, Math.min(16, Math.round(size * 1.5)));
   const close = () => { if (ring && ring.length >= 3) rings.push(ring); ring = null; };
   for (const c of commands) {
     if (c.type === 'M') { close(); ring = [[c.x, -c.y]]; px = c.x; py = c.y; }
@@ -78,7 +78,7 @@ function ringArea(r) {
  * maxWidth: widest a line may be (mm); lines shrink to fit, but not below minSize.
  * mirror: flip left-right so the text reads correctly when the tile is turned over.
  */
-export function layoutText(font, lines, { maxWidth, minSize, mirror = true, gap = 0.45 }) {
+export function layoutText(font, lines, { maxWidth, minSize, mirror = true, gap = 0.45, coarse = false }) {
   const placed = [];
   const notes = []; // { line, kind: 'shortened', shown }
   lines.forEach((line, index) => {
@@ -137,7 +137,7 @@ export function layoutText(font, lines, { maxWidth, minSize, mirror = true, gap 
   placed.forEach((p, i) => {
     const polys = [];
     const path = font.getPath(p.text, -p.width / 2, 0, p.size);
-    for (const ring of flatten(path.commands, p.size)) {
+    for (const ring of flatten(path.commands, p.size, coarse)) {
       polys.push(ring.map(([x, yy]) => [mirror ? -x : x, yy + baselines[i] + shift]));
     }
     if (!polys.length) return;
