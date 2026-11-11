@@ -49,7 +49,8 @@ function towerClear(shape, R, cx, cy, x0, y0) {
   const n = 8;
   for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) {
     const x = x0 + (TOWER * i) / n - cx, y = y0 + (TOWER * j) / n - cy;
-    if (shapeNorm(shape, x, y) <= R + GAP) return false;
+    // shapeNorm measures in circumradius units; a straight side GAP mm away is GAP/cos(π/K) further.
+    if (shapeNorm(shape, x, y) <= R + GAP / (shape.circle ? 1 : Math.cos(Math.PI / shape.K))) return false;
   }
   return true;
 }
@@ -66,18 +67,9 @@ function defaultTower(plate) {
  *  { room: 'corner', tile, tower }                     tile moved away from the slicer's tower spot
  *                                                      (the downloaded file already places it there)
  *  { room: 'drag', tile: {x:0,y:0}, tower }            tile in the middle; drag the tower to this corner
- *  { room: 'turned' }                                  only with a quarter turn in the slicer
  *  { room: 'none' }
  */
 export function towerRoom(shapeKey, sizeMm, plate) {
-  const asPlaced = towerRoomAsPlaced(shapeKey, sizeMm, plate);
-  if (asPlaced.room !== 'none') return asPlaced;
-  // A quarter turn swaps the tile's width and depth relative to the plate.
-  const turned = towerRoomAsPlaced(shapeKey, sizeMm, { ...plate, w: plate.d, d: plate.w });
-  return turned.room !== 'none' ? { room: 'turned' } : { room: 'none' };
-}
-
-function towerRoomAsPlaced(shapeKey, sizeMm, plate) {
   const shape = SHAPES[shapeKey];
   const R = shape.sizeToR(sizeMm);
   const f = footprint(shapeKey, sizeMm);

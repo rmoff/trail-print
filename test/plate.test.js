@@ -31,8 +31,13 @@ test('purge tower room matches what Bambu Studio sliced on an A1 mini', () => {
   assert.equal(sq.room, 'corner');
   assert.ok(sq.tile.x > 0 && sq.tile.y < 0, 'tile moved front-right, away from the back-left tower');
   assert.deepEqual(tilePlacement('square', 125, a1mini, false), { x: 0, y: 0 }, 'one colour: no tower, tile in the middle');
-  // 230 mm hexagon on an MK4S (250 x 210) only fits turned; the tower then has room.
-  assert.equal(towerRoom('hexagon', 230, mk4s).room, 'turned');
+  // Clearance is a real 8 mm for straight sides too (review 11 Nov 2026: 205 mm square on a
+  // P1S had 6 mm): the tower square never comes within GAP of the placed tile.
+  const p1s = PRINTERS.find(p => p.id === 'p1s');
+  const s = largestWithTower('square', p1s);
+  const r = towerRoom('square', s, p1s);
+  const gapX = Math.abs(r.tower.x - r.tile.x) - 20 - s / 2, gapY = Math.abs(r.tower.y - r.tile.y) - 20 - s / 2;
+  assert.ok(Math.max(gapX, gapY) >= 8 - 1e-9, `square ${s}: gap ${Math.max(gapX, gapY).toFixed(1)} mm`);
 });
 
 test('Fit to plate keeps the edge clearance in the orientation it uses', () => {

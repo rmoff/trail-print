@@ -49,7 +49,9 @@ function showPlate() {
   // Problems with fitting on the plate are shown on the preview itself, so the settings
   // panel never changes length (and jumps) when a setting changes.
   const fit = fits(o.shape, o.sizeMm, pl);
-  const room = fit !== 'no' && o.colourMode !== 'one' ? towerRoom(o.shape, o.sizeMm, pl).room : null;
+  // Tower room is worked out for the tile as placed (a tile that only fits turned gets the
+  // rotate advice; the slicer places the tower after that).
+  const room = fit === 'yes' && o.colourMode !== 'one' ? towerRoom(o.shape, o.sizeMm, pl).room : null;
   let note = null, warn = false;
   if (fit === 'no') {
     const best = largestFit(o.shape, pl, o.colourMode !== 'one');
@@ -62,7 +64,6 @@ function showPlate() {
     warn = true;
   }
   else if (fit === 'turned') note = 'In the slicer, rotate it 90° to fit.';
-  else if (room === 'turned') note = 'In the slicer, rotate it 90° to make room for the purge tower.';
   else if (room === 'drag') note = 'In the slicer, drag the purge tower to the corner shown.';
   const cn = $('canvas-note');
   cn.hidden = !note;
