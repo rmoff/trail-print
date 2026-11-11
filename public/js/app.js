@@ -335,7 +335,8 @@ async function rebuild() {
       dem: state.dem, water: state.water, options: o,
       text: {
         title: $('t-title').value, subtitle: $('t-sub').value, stats: $('t-stats').value,
-        subtitleShort: !state.textEdited.sub && state.dateShort !== state.dateText ? subDefault(true) : null,
+        // Short-date fallback only while the line is exactly the default "place, date".
+        subtitleShort: $('t-sub').value === subDefault() && state.dateShort !== state.dateText ? subDefault(true) : null,
       },
     });
   } catch (e) {
