@@ -436,8 +436,9 @@ function remember() {
   }); }, 400);
 }
 async function restore() {
+  const ticket = ++loadTicket;
   const s = await loadSaved();
-  if (!s?.gpxText || state.gpx) return;
+  if (!s?.gpxText || state.gpx || ticket !== loadTicket) return;
   for (const [id, v] of Object.entries(s.inputs || {})) if ($(id)) $(id).value = v;
   for (const [n, v] of Object.entries(s.radios || {})) {
     const el = document.querySelector(`input[name=${n}][value="${CSS.escape(String(v))}"]`);
@@ -459,22 +460,27 @@ $('forget').addEventListener('click', async () => {
 // The course of the Wharfedale Three Peaks fell race (Kettlewell, Yorkshire Dales): times and
 // heart rate stripped, track thinned. ?demo in the address opens straight into it.
 const DEMO = { url: 'demo/wharfedale-three-peaks.gpx', title: 'Wharfedale Three Peaks', sub: 'Upper Wharfedale, Yorkshire Dales' };
+// Every way of choosing a run (file, example, restored state) takes a ticket; only the
+// newest one may load, so a slow example or restore can't replace a file picked since.
+let loadTicket = 0;
 async function loadDemo() {
+  const ticket = ++loadTicket;
   try {
     status('Loading the example');
     const res = await fetch(DEMO.url);
     if (!res.ok) throw new Error(`example route ${res.status}`);
     const text = await res.text();
+    if (ticket !== loadTicket) return;
     await loadFile({ name: 'wharfedale-three-peaks.gpx', text: async () => text },
       { values: { title: DEMO.title, sub: DEMO.sub }, edited: { title: false, sub: true } });
   } catch (e) {
-    status(`Could not load the example: ${e.message}`, 'error');
+    if (ticket === loadTicket) status(`Could not load the example: ${e.message}`, 'error');
   }
 }
 $('try-demo').addEventListener('click', loadDemo);
 
 // ---------- file input ----------
-$('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) loadFile(f); e.target.value = ''; });
+$('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) { loadTicket++; loadFile(f); } e.target.value = ''; });
 $('change-file').addEventListener('click', () => $('file').click());
 const dz = $('dropzone');
 const stage = document.querySelector('.stage');
@@ -483,11 +489,20 @@ stage.addEventListener('dragleave', () => dz.classList.remove('dragging'));
 stage.addEventListener('drop', e => {
   e.preventDefault(); dz.classList.remove('dragging');
   const f = e.dataTransfer.files[0];
-  if (f) loadFile(f);
+  if (f) { loadTicket++; loadFile(f); }
 });
 for (const b of document.querySelectorAll('[data-view]')) b.addEventListener('click', () => preview?.view(b.dataset.view));
 
 updateNotes();
-if (new URLSearchParams(location.search).has('demo')) loadDemo(); else restore();
+// ?demo opens the example once: it is removed from the address so a reload restores
+// whatever the visitor has done since, instead of loading the example again.
+const params = new URLSearchParams(location.search);
+if (params.has('demo')) {
+  params.delete('demo');
+  history.replaceState(null, '', location.pathname + (params.size ? `?${params}` : '') + location.hash);
+  loadDemo();
+} else {
+  restore();
+}
 // For automated tests: window.__trail exposes state.
 window.__trail = { state, loadFile };
