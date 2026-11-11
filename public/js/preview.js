@@ -94,7 +94,7 @@ export class Preview {
     const g = new THREE.Group();
     g.rotation.x = -Math.PI / 2; // same axes as the model: x east, y north, z up
     const slab = new THREE.Mesh(new THREE.BoxGeometry(plate.w, plate.d, 2),
-      new THREE.MeshStandardMaterial({ color: tooBig ? 0x6e2420 : 0x30353a, roughness: 0.85, transparent: true }));
+      new THREE.MeshStandardMaterial({ color: tooBig ? 0x6e2420 : 0x30353a, roughness: 0.85 }));
     slab.position.z = -1.05;
     g.add(slab);
     const pts = [];
@@ -102,13 +102,14 @@ export class Preview {
     for (let y = 10; y < plate.d; y += 10) pts.push(-plate.w / 2, y - plate.d / 2, 0, plate.w / 2, y - plate.d / 2, 0);
     const grid = new THREE.BufferGeometry();
     grid.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    g.add(new THREE.LineSegments(grid, new THREE.LineBasicMaterial({ color: tooBig ? 0x9a3a33 : 0x4d555c, transparent: true })));
+    g.add(new THREE.LineSegments(grid, new THREE.LineBasicMaterial({ color: tooBig ? 0x9a3a33 : 0x4d555c })));
     this.plateMaterials = [slab.material, g.children[g.children.length - 1].material];
     this.plateBelow = null; // re-applied on the next frame
     if (tower) {
       const box = new THREE.Mesh(new THREE.BoxGeometry(35, 35, 18),
         new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.28, depthWrite: false }));
       box.position.set(tower.x, tower.y, 9);
+      box.renderOrder = 10; // see-through: draw after everything else so nothing paints over it
       g.add(box);
     }
     g.visible = this.flip.rotation.z === 0;
@@ -124,7 +125,10 @@ export class Preview {
     const below = this.camera.position.y < 0;
     if (below === this.plateBelow) return;
     this.plateBelow = below;
+    // Only see-through while below: an opaque plate marked transparent is drawn late and
+    // paints over the (see-through) purge tower.
     for (const m of this.plateMaterials) {
+      m.transparent = below;
       m.opacity = below ? 0.15 : 1;
       m.depthWrite = !below;
       m.needsUpdate = true;

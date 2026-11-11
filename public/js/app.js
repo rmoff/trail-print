@@ -193,6 +193,7 @@ function options() {
 }
 
 function updateNotes() {
+  applyFit();
   const o = options();
   $('size-out').textContent = `${o.sizeMm} mm`;
   $('margin-out').textContent = `${$('margin').value}%`;
@@ -240,21 +241,26 @@ function scheduleRebuild() {
   timer = setTimeout(() => { timer = null; rebuild(); }, 350);
 }
 
-// Fit to plate: the biggest tile that fits (leaving room for the purge tower on colour prints).
-$('fit-plate').addEventListener('click', () => {
+// Fit to plate (on by default): the size follows the shape, printer and colours, as the
+// biggest tile that fits (with room for the purge tower on colour prints). Dragging the size
+// slider turns it off.
+function applyFit() {
+  if (!$('fit-plate').checked) return;
   const o = options();
   const best = largestFit(o.shape, plate(), o.colourMode !== 'one');
-  const min = +$('size').min;
-  if (!best || best < min) {
-    status(`Plate too small for a ${min} mm tile${o.colourMode !== 'one' ? ' and purge tower' : ''}.`, 'error');
-    return;
-  }
-  $('size').value = String(Math.min(+$('size').max, best));
-  scheduleRebuild();
-});
+  const min = +$('size').min, max = +$('size').max;
+  $('size').value = String(best ? Math.max(min, Math.min(max, best)) : min);
+}
+$('size').addEventListener('input', () => { $('fit-plate').checked = false; });
 
 const PLATE_CONTROLS = ['printer', 'plate-w', 'plate-d'];
-for (const id of PLATE_CONTROLS) $(id).addEventListener(id === 'printer' ? 'change' : 'input', () => { updateNotes(); remember(); });
+// A new plate only redraws the preview, unless Fit to plate changes the size with it.
+for (const id of PLATE_CONTROLS) {
+  $(id).addEventListener(id === 'printer' ? 'change' : 'input', () => {
+    if ($('fit-plate').checked) scheduleRebuild();
+    else { updateNotes(); remember(); }
+  });
+}
 for (const el of document.querySelectorAll('#panel input')) {
   if (PLATE_CONTROLS.includes(el.id)) continue;
   if (el.type === 'text') {
@@ -448,6 +454,7 @@ function remember() {
     inputs: Object.fromEntries(SETTING_INPUTS.map(id => [id, $(id).value])),
     radios: Object.fromEntries(SETTING_RADIOS.map(n => [n, document.querySelector(`input[name=${n}]:checked`).value])),
     exagAuto: $('exag-auto').checked,
+    fitPlate: $('fit-plate').checked,
     place: state.place, date: state.dateISO,
     text: {
       values: { title: $('t-title').value, sub: $('t-sub').value, stats: $('t-stats').value },
@@ -466,6 +473,8 @@ async function restore() {
     if (el) el.checked = true;
   }
   if (typeof s.exagAuto === 'boolean') $('exag-auto').checked = s.exagAuto;
+  // Runs saved before Fit to plate existed keep the size they had.
+  $('fit-plate').checked = typeof s.fitPlate === 'boolean' ? s.fitPlate : false;
   updateNotes();
   await loadFile({ name: s.fileName || 'run.gpx', text: async () => s.gpxText }, s.text, ticket,
     s.place ? { place: s.place, date: s.date && /^\d{4}-\d{2}-\d{2}$/.test(s.date) ? s.date : null } : null);
