@@ -35,7 +35,10 @@
       <span class="spinner" aria-hidden="true"></span><span id="status-text">Working</span>
     </div>
 
-    <div id="plate-label" class="plate-label" hidden></div>
+    <div class="stage-notes" id="stage-notes" hidden>
+      <div id="plate-label" class="plate-label"></div>
+      <div id="canvas-note" class="canvas-note" role="status" aria-live="polite" hidden></div>
+    </div>
 
     <div id="view-buttons" class="view-buttons" hidden>
       <button type="button" data-view="front">Angle</button>
@@ -75,11 +78,10 @@
     <fieldset class="group">
       <legend>Colours</legend>
       <div class="segmented compact" role="radiogroup">
-        <label><input type="radio" name="colours" value="full" checked><span><span class="sws"><i class="sw" style="--c:#3fae4a"></i><i class="sw" style="--c:#2f8fdc"></i><i class="sw" style="--c:#d8322a"></i><i class="sw" style="--c:#f4f4f0"></i></span>Four</span></label>
-        <label><input type="radio" name="colours" value="two"><span><span class="sws"><i class="sw" style="--c:#3fae4a"></i><i class="sw" style="--c:#d8322a"></i></span>Two</span></label>
-        <label><input type="radio" name="colours" value="one"><span><span class="sws"><i class="sw" style="--c:#c9c4b8"></i></span>One</span></label>
+        <label title="Land, water, route and text in four colours. Needs automatic filament changes (e.g. a Bambu AMS)."><input type="radio" name="colours" value="full" checked><span><span class="sws"><i class="sw" style="--c:#3fae4a"></i><i class="sw" style="--c:#2f8fdc"></i><i class="sw" style="--c:#d8322a"></i><i class="sw" style="--c:#f4f4f0"></i></span>Four</span></label>
+        <label title="Land in one colour; route and text in another."><input type="radio" name="colours" value="two"><span><span class="sws"><i class="sw" style="--c:#3fae4a"></i><i class="sw" style="--c:#d8322a"></i></span>Two</span></label>
+        <label title="Prints on any printer. The route is a raised ridge and the text is cut into the back."><input type="radio" name="colours" value="one"><span><span class="sws"><i class="sw" style="--c:#c9c4b8"></i></span>One</span></label>
       </div>
-      <p class="note" id="colour-note"></p>
     </fieldset>
 
     <details class="section" id="sec-printer">
@@ -96,7 +98,7 @@
           <label><input type="radio" name="nozzle" value="0.4" checked><span>0.4 mm nozzle</span></label>
           <label><input type="radio" name="nozzle" value="0.2"><span>0.2 mm, finer</span></label>
         </div>
-        <p class="note" id="nozzle-note"></p>
+        <p class="note">0.2 mm gives a thinner route, smaller text and finer terrain, but prints take two to three times as long.</p>
       </div>
     </details>
 
@@ -138,7 +140,7 @@
         <ul>
           <li>Layers of 0.12 to 0.16 mm make the slopes smooth.</li>
           <li>No supports needed. Print it flat, text side down.</li>
-          <li>Colour changes need a purge tower beside the tile (the see-through block on the plate). If the slicer puts it on top of the tile, drag the tower into the free corner.</li>
+          <li>Colour changes need a purge tower beside the tile: the see-through block on the plate in the preview. If the slicer puts it on top of the tile, drag the tower into the free corner.</li>
           <li>The 3MF opens in Bambu Studio and OrcaSlicer with each part already on its filament. For PrusaSlicer or Cura, use the other 3MF and assign the parts to filaments yourself.</li>
         </ul>
       </div>

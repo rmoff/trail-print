@@ -41,12 +41,25 @@ function plate() {
 function showPlate() {
   const o = options(), pl = plate();
   $('plate-custom').hidden = pl.id !== 'custom';
-  const lbl = $('plate-label');
-  lbl.hidden = !state.gpx;
-  lbl.textContent = `${pl.name} plate, ${pl.w} × ${pl.d} mm`;
+  $('stage-notes').hidden = !state.gpx;
+  $('plate-label').textContent = `${pl.name} plate, ${pl.w} × ${pl.d} mm`;
+  // Problems with fitting on the plate are shown on the preview itself, so the settings
+  // panel never changes length (and jumps) when a setting changes.
+  const fit = fits(o.shape, o.sizeMm, pl);
+  const room = fit !== 'no' && o.colourMode !== 'one' ? towerRoom(o.shape, o.sizeMm, pl).room : null;
+  let note = null, warn = false;
+  if (fit === 'no') { note = 'Too big for this plate. Make it smaller, or use Fit to plate.'; warn = true; }
+  else if (room === 'none') { note = 'No room on this plate for the purge tower that colour changes need. Make it smaller, use Fit to plate, or print in one colour.'; warn = true; }
+  else if (fit === 'turned') note = 'Turn the tile a quarter turn in the slicer to fit this plate.';
+  else if (room === 'turned') note = 'Turn the tile a quarter turn in the slicer to leave room for the purge tower.';
+  else if (room === 'corner') note = 'Move the tile into a corner in the slicer to leave room for the purge tower.';
+  const cn = $('canvas-note');
+  cn.hidden = !note;
+  cn.textContent = note || '';
+  cn.classList.toggle('warn', warn);
   if (!preview) return;
-  const room = o.colourMode === 'one' ? null : towerRoom(o.shape, o.sizeMm, pl);
-  preview.setPlate(pl, room?.room === 'centred' ? room.tower : null);
+  const tower = room === 'centred' ? towerRoom(o.shape, o.sizeMm, pl).tower : null;
+  preview.setPlate(pl, tower, { tooBig: fit === 'no' });
 }
 const EXPORT_BUTTONS = ['dl-3mf', 'dl-stl', 'dl-prusa'];
 /** Downloads are only offered for a model that matches the current file and settings. */
@@ -166,42 +179,11 @@ function updateNotes() {
   const exagText = o.exaggeration == null ? (state.built ? `${state.built.info.exaggeration}× (auto)` : 'Auto') : `${o.exaggeration}×`;
   $('exag-out').textContent = o.exaggeration == null ? 'Auto' : `${o.exaggeration}×`;
   $('exag').disabled = o.exaggeration == null;
-  const pl = plate();
   const f = footprint(o.shape, o.sizeMm);
-  const fit = fits(o.shape, o.sizeMm, pl);
-  const sizeNote = $('size-note');
-  let text = `${Math.round(f.w)} × ${Math.round(f.d)} mm on the plate.`;
-  let warn = false;
-  if (fit === 'no') {
-    text += ' Too big for this plate.';
-    warn = true;
-  } else if (fit === 'turned') {
-    text += ' Fits if you turn it a quarter turn in the slicer.';
-  }
-  if (fit !== 'no' && o.colourMode !== 'one') {
-    // Colour changes need a purge tower (about 35 mm square) beside the tile.
-    // Checked in Bambu Studio for an A1 mini: a 150 mm hexagon leaves room for it.
-    const room = towerRoom(o.shape, o.sizeMm, pl).room;
-    if (room === 'centred') text += ' The see-through block is the purge tower that colour changes need.';
-    else if (room === 'turned') text += ' Turn it a quarter turn in the slicer to make room for the purge tower that colour changes need.';
-    else if (room === 'corner') text += ' Move it into a corner in the slicer to make room for the purge tower that colour changes need.';
-    else if (room === 'none') {
-      text += ' No room left for the purge tower that colour changes need: use Fit to plate, or one colour.';
-      warn = true;
-    }
-  }
-  sizeNote.textContent = text;
-  sizeNote.classList.toggle('warn', warn);
+  $('size-note').textContent = `${Math.round(f.w)} × ${Math.round(f.d)} mm on the plate.`;
   showPlate();
-  $('nozzle-note').textContent = o.nozzle === 0.2
-    ? 'Thinner route, smaller text, finer terrain. Prints take two to three times as long.'
-    : 'The standard nozzle most printers come with.';
-  $('colour-note').textContent = {
-    full: 'Land, water, route, and text. Needs automatic filament changes (e.g. Bambu AMS).',
-    two: 'Land in one colour; route and text in another.',
-    one: 'Any printer. The route is a raised ridge; the text is cut into the back.',
-  }[o.colourMode];
   // Closed sections show their current values in the heading.
+  const pl = plate();
   const shortName = pl.id === 'custom' ? `${pl.w} × ${pl.d} mm plate` : pl.name.replace(/^(Bambu Lab|Prusa|Creality) /, '');
   $('sum-printer').textContent = `${shortName}, ${o.nozzle} mm`;
   $('sum-terrain').textContent = `Hills ${exagText}, ${$('margin').value}% around`;

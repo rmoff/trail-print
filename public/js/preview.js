@@ -55,7 +55,7 @@ export class Preview {
    * The printer's build plate under the tile, for scale: plate {w, d} in mm, and optionally
    * a see-through purge tower at {x, y} (centre, relative to the plate centre).
    */
-  setPlate(plate, tower) {
+  setPlate(plate, tower, { tooBig = false } = {}) {
     if (this.plate) {
       this.plate.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
       this.scene.remove(this.plate);
@@ -63,7 +63,7 @@ export class Preview {
     const g = new THREE.Group();
     g.rotation.x = -Math.PI / 2; // same axes as the model: x east, y north, z up
     const slab = new THREE.Mesh(new THREE.BoxGeometry(plate.w, plate.d, 2),
-      new THREE.MeshStandardMaterial({ color: 0x30353a, roughness: 0.85 }));
+      new THREE.MeshStandardMaterial({ color: tooBig ? 0x6e2420 : 0x30353a, roughness: 0.85 }));
     slab.position.z = -1.05;
     g.add(slab);
     const pts = [];
@@ -71,7 +71,7 @@ export class Preview {
     for (let y = 10; y < plate.d; y += 10) pts.push(-plate.w / 2, y - plate.d / 2, 0, plate.w / 2, y - plate.d / 2, 0);
     const grid = new THREE.BufferGeometry();
     grid.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    g.add(new THREE.LineSegments(grid, new THREE.LineBasicMaterial({ color: 0x4d555c })));
+    g.add(new THREE.LineSegments(grid, new THREE.LineBasicMaterial({ color: tooBig ? 0x9a3a33 : 0x4d555c })));
     if (tower) {
       const box = new THREE.Mesh(new THREE.BoxGeometry(35, 35, 18),
         new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.28, depthWrite: false }));
