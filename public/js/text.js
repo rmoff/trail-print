@@ -88,7 +88,8 @@ export function layoutText(font, lines, { maxWidth, minSize, mirror = true, gap 
     let shown = text;
     let width = font.getAdvanceWidth(shown, size);
     if (width > maxWidth) {
-      size = Math.max(minSize, (size * maxWidth) / width);
+      // Shrink to fit (a hair under, so rounding can't leave it a fraction too wide).
+      size = Math.max(minSize, (size * maxWidth * 0.995) / width);
       width = font.getAdvanceWidth(shown, size);
       // Still too wide at the smallest readable size: cut it short.
       if (width > maxWidth) {

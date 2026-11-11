@@ -9,6 +9,11 @@ set into the underside.
 Drop in a GPX file (from Strava: open the activity, use the ⋯ menu, then Export GPX), pick a
 shape, size and colours, and download a file for your slicer.
 
+No GPX to hand? *Try an example* on the start page (or open
+https://trail-print.rmoff.net/?demo) loads the course of the Wharfedale Three Peaks fell race
+from Kettlewell in the Yorkshire Dales (`public/demo/`, a recorded run with times and heart
+rate removed and the track thinned to about 2,200 points).
+
 ## What you get
 
 - **3MF for Bambu Studio and OrcaSlicer.** One object, with each colour a separate part

@@ -455,6 +455,24 @@ $('forget').addEventListener('click', async () => {
   location.reload();
 });
 
+// ---------- example route ----------
+// The course of the Wharfedale Three Peaks fell race (Kettlewell, Yorkshire Dales): times and
+// heart rate stripped, track thinned. ?demo in the address opens straight into it.
+const DEMO = { url: 'demo/wharfedale-three-peaks.gpx', title: 'Wharfedale Three Peaks', sub: 'Upper Wharfedale, Yorkshire Dales' };
+async function loadDemo() {
+  try {
+    status('Loading the example');
+    const res = await fetch(DEMO.url);
+    if (!res.ok) throw new Error(`example route ${res.status}`);
+    const text = await res.text();
+    await loadFile({ name: 'wharfedale-three-peaks.gpx', text: async () => text },
+      { values: { title: DEMO.title, sub: DEMO.sub }, edited: { title: false, sub: true } });
+  } catch (e) {
+    status(`Could not load the example: ${e.message}`, 'error');
+  }
+}
+$('try-demo').addEventListener('click', loadDemo);
+
 // ---------- file input ----------
 $('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) loadFile(f); e.target.value = ''; });
 $('change-file').addEventListener('click', () => $('file').click());
@@ -470,6 +488,6 @@ stage.addEventListener('drop', e => {
 for (const b of document.querySelectorAll('[data-view]')) b.addEventListener('click', () => preview?.view(b.dataset.view));
 
 updateNotes();
-restore();
+if (new URLSearchParams(location.search).has('demo')) loadDemo(); else restore();
 // For automated tests: window.__trail exposes state.
 window.__trail = { state, loadFile };

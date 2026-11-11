@@ -106,6 +106,8 @@ a { color: inherit; }
 }
 .drop-title { font: 600 26px/1.15 "Fredoka", sans-serif; margin: 0 0 18px; }
 .hint { color: var(--muted); font-size: 14px; margin: 14px 0 0; }
+.demo-line { margin: 12px 0 0; font-size: 15px; color: var(--muted); }
+.demo-line .link { font-size: 15px; text-align: center; }
 
 .status {
   position: absolute; left: 16px; bottom: 16px;

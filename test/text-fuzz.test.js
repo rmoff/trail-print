@@ -70,3 +70,15 @@ test('ordinary text on ordinary tiles: no letters left off, messages name the li
   assert.match(msgs[0], /^The second line is too long to fit on the tile at 90 mm, so it was shortened to “Grassington, 3 M…”/);
   assert.match(msgs[1], /^Some letters of the title \(“Morning Trail Run”\) came too close to the edge/);
 });
+
+test('a title shrunk to fit is not also shortened (rounding)', () => {
+  // 11 Nov 2026: "Wharfedale Three Peaks" on a 150 mm hexagon came out as "Wharfedale Three Pea…".
+  for (const title of ['Wharfedale Three Peaks', 'Morning Trail Run', 'Dales Dazzler 50', 'Wharfedale Trail Half']) {
+    for (const shapeKey of Object.keys(SHAPES)) {
+      for (const sizeMm of [120, 150, 180]) {
+        const t = underside(font, SHAPES[shapeKey], sizeMm, 0.4, { title, subtitle: 'Kettlewell with Starbotton', stats: '27.2 km  ·  1128 m climb' });
+        assert.deepEqual(t.notes, [], `${title} ${shapeKey} ${sizeMm}`);
+      }
+    }
+  }
+});
