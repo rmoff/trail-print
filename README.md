@@ -89,6 +89,8 @@ npm test                   # geometry, text fuzzing, 3MF contents, GPX parsing, 
 npx wrangler dev           # local copy at http://localhost:8787 with the production headers
 node test/e2e.mjs http://localhost:8787/ path/to/run.gpx out/e2e
 node test/e2e-reload.mjs http://localhost:8787/ path/to/run.gpx
+node test/e2e-phone.mjs http://localhost:8787/ path/to/run.gpx    # touch: spin, scroll, tap, download
+node test/e2e-sizes.mjs http://localhost:8787/ path/to/run.gpx    # phone/tablet/desktop sizes fit the screen
 ```
 
 Put your own GPX files in `test/fixtures/` (git-ignored). `wrangler dev` does not notice
