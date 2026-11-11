@@ -117,6 +117,7 @@ async function loadFile(file, restoredText = null) {
     setText('sub', state.dateText);
     setText('stats', statsLine());
     layout.classList.add('has-run');
+    document.body.classList.add('has-run');
     $('view-buttons').hidden = false;
     if (!preview) preview = new Preview($('viewer'));
     showPlate();

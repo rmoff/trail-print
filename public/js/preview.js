@@ -111,7 +111,9 @@ export class Preview {
 
   view(which) {
     this.currentView = which;
-    const d = Math.max(this.size, (this.plateSize || 0) * 0.9) * 2.3;
+    // Back off further on narrow (portrait) previews so the whole plate stays in view.
+    const narrow = Math.max(1, 1.25 / (this.camera.aspect || 1));
+    const d = Math.max(this.size, (this.plateSize || 0) * 0.9) * 2.3 * narrow;
     if (this.plate) this.plate.visible = which !== 'under';
     this.controls.target.set(0, this.size * 0.02, 0);
     this.flip.rotation.z = which === 'under' ? Math.PI : 0;
