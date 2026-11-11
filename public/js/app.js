@@ -353,9 +353,9 @@ worker.onmessage = e => {
 };
 worker.onerror = e => {
   e.preventDefault?.();
-  for (const p of pending.values()) p.reject(new Error('Out of memory.'));
+  for (const p of pending.values()) p.reject(new Error('The model builder stopped.'));
   pending.clear();
-  status('Out of memory. Try a smaller size or the 0.4 mm nozzle, then reload.', 'error');
+  status('The model builder stopped. Reload the page; if it happens again, try a smaller size or the 0.4 mm nozzle.', 'error');
 };
 
 function showInfo(info, warnings) {

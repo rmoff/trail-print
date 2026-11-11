@@ -42,7 +42,7 @@ export function parseGpx(text) {
   if (typeof text !== 'string' || !/<gpx\b/i.test(text)) throw new Error('Not a GPX file.');
   let track = points(text, 'trkpt');
   if (track.length < 2) track = points(text, 'rtept');
-  if (track.length < 2) throw new Error('No route in this GPX file.');
+  if (track.length < 2) throw new Error('No route in this GPX file (it needs at least two points).');
   const trk = /<(?:\w+:)?trk\b[^>]*>([\s\S]*?)<(?:\w+:)?trkseg\b/.exec(text);
   const meta = /<(?:\w+:)?metadata\b[^>]*>([\s\S]*?)<\/(?:\w+:)?metadata>/.exec(text);
   const name = (trk && child(trk[1], 'name')) || (meta && child(meta[1], 'name')) || '';

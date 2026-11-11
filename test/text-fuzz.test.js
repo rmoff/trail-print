@@ -67,8 +67,8 @@ test('ordinary text on ordinary tiles: no letters left off, messages name the li
     }
   }
   const msgs = textMessages(text, 90, [{ line: 1, kind: 'shortened', shown: 'Grassington, 3 M…' }], [{ line: 0, reason: 'edge' }]);
-  assert.equal(msgs[0], 'Second line shortened to “Grassington, 3 M…” to fit.');
-  assert.equal(msgs[1], 'Title: letters too near the edge were left off.');
+  assert.equal(msgs[0], 'Second line shortened to “Grassington, 3 M…” to fit. Shorten it or enlarge the tile.');
+  assert.equal(msgs[1], 'Title: letters too near the edge were left off. Shorten it or enlarge the tile.');
 });
 
 test('a title shrunk to fit is not also shortened (rounding)', () => {

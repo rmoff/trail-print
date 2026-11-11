@@ -42,8 +42,8 @@ export function textMessages(text, sizeMm, notes = [], dropped = []) {
   const out = [];
   for (const n of notes) {
     const name = LINE_NAMES[n.line];
-    if (n.kind === 'shortened') out.push(`${cap(name)} shortened to ${quote(n.shown)} to fit.`);
-    else out.push(`${cap(name)} left off: it couldn’t be made printable.`);
+    if (n.kind === 'shortened') out.push(`${cap(name)} shortened to ${quote(n.shown)} to fit. Shorten it or enlarge the tile.`);
+    else out.push(`${cap(name)} left off: it couldn’t be made printable. Try other characters.`);
   }
   if (dropped.some(d => d.reason === 'all')) {
     out.push('Text on the back left off: it couldn’t be made printable. Try another size.');
@@ -53,7 +53,7 @@ export function textMessages(text, sizeMm, notes = [], dropped = []) {
       for (const l of lines) {
         const name = LINE_NAMES[l] ?? 'text';
         out.push(reason === 'edge'
-          ? `${cap(name)}: letters too near the edge were left off.`
+          ? `${cap(name)}: letters too near the edge were left off. Shorten it or enlarge the tile.`
           : `${cap(name)}: some letters couldn’t be made printable and were left off. Try another size.`);
       }
     }
