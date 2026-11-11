@@ -23,14 +23,14 @@
 
     <div id="dropzone" class="dropzone">
       <div class="drop-card">
-        <p class="drop-title"><span class="for-mouse">Drop a GPX file here</span><span class="for-touch">Choose your GPX file</span></p>
+        <p class="drop-title for-mouse">Drop a GPX file here</p>
         <label class="button primary file-button">
           <input id="file" type="file">
           Choose GPX file
         </label>
-        <p class="demo-line">or <button type="button" class="link" id="try-demo">try an example: the Wharfedale Three Peaks fell race</button></p>
-        <p class="hint">From Strava: open the activity on strava.com, use the <span aria-label="three dots">⋯</span> menu, then Export GPX. (Strava's phone app can't export GPX files.)</p>
-        <p class="hint">Your file stays on this device. Only map data for the area around your route is downloaded. Your last run and settings are kept in this browser for next time.</p>
+        <p class="demo-line">or <button type="button" class="link" id="try-demo">try an example</button></p>
+        <p class="hint">From Strava: on strava.com, the activity's <span aria-label="more">⋯</span> menu, Export GPX.</p>
+        <p class="hint">Your file never leaves this device.</p>
       </div>
     </div>
 
@@ -55,7 +55,7 @@
     <div class="run-summary" id="run-summary" hidden>
       <p class="run-name" id="run-name"></p>
       <p class="run-meta" id="run-meta"></p>
-      <button type="button" class="link" id="change-file"><span class="long-label">Use a different file</span><span class="short-label">Other file</span></button>
+      <button type="button" class="link" id="change-file">Change file</button>
       <button type="button" class="link" id="forget">Start again</button>
     </div>
 
@@ -82,14 +82,14 @@
     <fieldset class="group">
       <legend>Colours</legend>
       <div class="segmented compact" role="radiogroup">
-        <label title="Land, water, route and text in four colours. Needs automatic filament changes (e.g. a Bambu AMS)."><input type="radio" name="colours" value="full" checked><span><span class="sws"><i class="sw" style="--c:#3fae4a"></i><i class="sw" style="--c:#2f8fdc"></i><i class="sw" style="--c:#d8322a"></i><i class="sw" style="--c:#f4f4f0"></i></span>Four</span></label>
-        <label title="Land in one colour; route and text in another."><input type="radio" name="colours" value="two"><span><span class="sws"><i class="sw" style="--c:#3fae4a"></i><i class="sw" style="--c:#d8322a"></i></span>Two</span></label>
-        <label title="Prints on any printer. The route is a raised ridge and the text is cut into the back."><input type="radio" name="colours" value="one"><span><span class="sws"><i class="sw" style="--c:#c9c4b8"></i></span>One</span></label>
+        <label title="Land, water, route, text. Needs a multi-filament printer."><input type="radio" name="colours" value="full" checked><span><span class="sws"><i class="sw" style="--c:#3fae4a"></i><i class="sw" style="--c:#2f8fdc"></i><i class="sw" style="--c:#d8322a"></i><i class="sw" style="--c:#f4f4f0"></i></span>Four</span></label>
+        <label title="Land; route and text."><input type="radio" name="colours" value="two"><span><span class="sws"><i class="sw" style="--c:#3fae4a"></i><i class="sw" style="--c:#d8322a"></i></span>Two</span></label>
+        <label title="Any printer. Text is engraved."><input type="radio" name="colours" value="one"><span><span class="sws"><i class="sw" style="--c:#c9c4b8"></i></span>One</span></label>
       </div>
     </fieldset>
 
     <details class="section" id="sec-printer">
-      <summary><span class="sec-title">Printer and nozzle</span><span class="sec-value" id="sum-printer"></span></summary>
+      <summary><span class="sec-title">Printer</span><span class="sec-value" id="sum-printer"></span></summary>
       <div class="sec-body">
         <select id="printer" class="select" aria-label="Printer"></select>
         <div class="plate-custom" id="plate-custom" hidden>
@@ -100,22 +100,21 @@
         </div>
         <div class="segmented nozzle" role="radiogroup" aria-label="Nozzle">
           <label><input type="radio" name="nozzle" value="0.4" checked><span>0.4 mm nozzle</span></label>
-          <label><input type="radio" name="nozzle" value="0.2"><span>0.2 mm, finer</span></label>
+          <label><input type="radio" name="nozzle" value="0.2"><span>0.2 mm nozzle</span></label>
         </div>
-        <p class="note">0.2 mm gives a thinner route, smaller text and finer terrain, but prints take two to three times as long.</p>
+        <p class="note">0.2 mm: finer detail, 2–3× the print time.</p>
       </div>
     </details>
 
     <details class="section" id="sec-terrain">
       <summary><span class="sec-title">Terrain</span><span class="sec-value" id="sum-terrain"></span></summary>
       <div class="sec-body">
-        <label class="sub-label" for="exag">Hills</label>
+        <label class="sub-label" for="exag">Hill height</label>
         <div class="range-row">
-          <input type="range" id="exag" min="1" max="4" step="0.1" value="2" aria-describedby="exag-note">
-          <output id="exag-out">Auto</output>
+          <input type="range" id="exag" min="1" max="4" step="0.1" value="2" aria-label="Hill height, times real life">
+          <output id="exag-out"></output>
           <label class="check"><input type="checkbox" id="exag-auto" checked> Auto</label>
         </div>
-        <p class="note" id="exag-note">How many times taller than real life the hills are.</p>
         <label class="sub-label" for="margin">Land around the route</label>
         <div class="range-row">
           <input type="range" id="margin" min="5" max="80" step="5" value="15">
@@ -130,7 +129,6 @@
         <label class="field">Title<input type="text" id="t-title" maxlength="40"></label>
         <label class="field">Second line<input type="text" id="t-sub" maxlength="50"></label>
         <label class="field">Third line<input type="text" id="t-stats" maxlength="50"></label>
-        <p class="note">Printed underneath, so it reads when the tile stands on its edge or hangs on a wall.</p>
       </div>
     </details>
 
@@ -140,23 +138,23 @@
     <details class="section" id="sec-tips">
       <summary><span class="sec-title">How to print it</span></summary>
       <div class="sec-body tips">
-        <ol id="slot-list" class="slot-list"></ol>
+        <ul id="slot-list" class="slot-list"></ul>
         <ul>
-          <li>Layers of 0.12 to 0.16 mm make the slopes smooth.</li>
-          <li>No supports needed. Print it flat, text side down.</li>
-          <li>Colour changes need a purge tower beside the tile: the see-through block on the plate in the preview. If the slicer puts it on top of the tile, drag the tower into the free corner.</li>
-          <li>The 3MF opens in Bambu Studio and OrcaSlicer with each part already on its filament. For PrusaSlicer or Cura, use the other 3MF and assign the parts to filaments yourself.</li>
+          <li>Layer height 0.12–0.16 mm.</li>
+          <li>Text side down; no supports.</li>
+          <li>The see-through block is the purge tower. If the slicer puts it on the tile, drag it clear.</li>
+          <li>PrusaSlicer and Cura: assign each part a filament.</li>
         </ul>
       </div>
     </details>
 
-    <p class="credits">Terrain: <a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles on AWS</a> (<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">sources and credits</a>). Water: <a href="https://openfreemap.org">OpenFreeMap</a>, <a href="https://openmaptiles.org">OpenMapTiles</a>. Water and place names © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors. <a href="https://github.com/rmoff/trail-print">Source code</a> (MIT licence).</p>
+    <p class="credits">Terrain: <a href="https://registry.opendata.aws/terrain-tiles/">AWS Terrain Tiles</a> (<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">sources</a>). Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, via <a href="https://openfreemap.org">OpenFreeMap</a> and <a href="https://openmaptiles.org">OpenMapTiles</a>. <a href="https://github.com/rmoff/trail-print">Source code</a> (MIT).</p>
    </div>
 
     <div class="downloads">
       <button type="button" class="button primary" id="dl-3mf" disabled>Download 3MF</button>
       <button type="button" class="button" id="dl-stl" disabled>STL</button>
-      <button type="button" class="link" id="dl-prusa" disabled><span class="long">3MF for PrusaSlicer or Cura</span><span class="short">Prusa/Cura 3MF</span></button>
+      <button type="button" class="link" id="dl-prusa" disabled>Prusa/Cura 3MF</button>
     </div>
   </aside>
 </main>

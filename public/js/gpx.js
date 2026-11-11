@@ -39,10 +39,10 @@ function points(text, tag) {
 
 /** Parse GPX text into { name, time, track: [{lat,lon,ele,time}], waypoints: [{lat,lon,name}] }. */
 export function parseGpx(text) {
-  if (typeof text !== 'string' || !/<gpx\b/i.test(text)) throw new Error('This does not look like a GPX file.');
+  if (typeof text !== 'string' || !/<gpx\b/i.test(text)) throw new Error('Not a GPX file.');
   let track = points(text, 'trkpt');
   if (track.length < 2) track = points(text, 'rtept');
-  if (track.length < 2) throw new Error('No route found in this GPX file (it needs a track or route with at least two points).');
+  if (track.length < 2) throw new Error('No route in this GPX file.');
   const trk = /<(?:\w+:)?trk\b[^>]*>([\s\S]*?)<(?:\w+:)?trkseg\b/.exec(text);
   const meta = /<(?:\w+:)?metadata\b[^>]*>([\s\S]*?)<\/(?:\w+:)?metadata>/.exec(text);
   const name = (trk && child(trk[1], 'name')) || (meta && child(meta[1], 'name')) || '';

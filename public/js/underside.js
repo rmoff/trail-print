@@ -31,6 +31,7 @@ export function underside(fontObj, shape, sizeMm, nozzle, text) {
 
 const LINE_NAMES = ['title', 'second line', 'third line'];
 const quote = t => `“${t}”`;
+const cap = t => t[0].toUpperCase() + t.slice(1);
 
 /**
  * Plain-language messages about the text on the back: which line was shortened or lost
@@ -41,19 +42,19 @@ export function textMessages(text, sizeMm, notes = [], dropped = []) {
   const out = [];
   for (const n of notes) {
     const name = LINE_NAMES[n.line];
-    if (n.kind === 'shortened') out.push(`The ${name} is too long to fit on the tile at ${sizeMm} mm, so it was shortened to ${quote(n.shown)}. Shorten it, or make the tile bigger.`);
-    else out.push(`The ${name} (${quote(lineText[n.line])}) could not be made into printable shapes, so it was left off the back. Try changing a character or two.`);
+    if (n.kind === 'shortened') out.push(`${cap(name)} shortened to ${quote(n.shown)} to fit.`);
+    else out.push(`${cap(name)} left off: it couldn’t be made printable.`);
   }
   if (dropped.some(d => d.reason === 'all')) {
-    out.push('The text on the back could not be made printable, so it was left off. Try a slightly different size or shorter text.');
+    out.push('Text on the back left off: it couldn’t be made printable. Try another size.');
   } else {
     for (const reason of ['edge', 'shape']) {
       const lines = [...new Set(dropped.filter(d => d.reason === reason).map(d => d.line))];
       for (const l of lines) {
         const name = LINE_NAMES[l] ?? 'text';
         out.push(reason === 'edge'
-          ? `Some letters of the ${name} (${quote(lineText[l])}) came too close to the edge of the tile, so they were left off the back. Shorten that line, or make the tile bigger.`
-          : `Some letters of the ${name} (${quote(lineText[l])}) could not be made into printable shapes, so they were left off the back. A slightly different size usually fixes it.`);
+          ? `${cap(name)}: letters too near the edge were left off.`
+          : `${cap(name)}: some letters couldn’t be made printable and were left off. Try another size.`);
       }
     }
   }

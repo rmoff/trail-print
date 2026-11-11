@@ -47,7 +47,7 @@ self.onmessage = e => {
     else if (m.type === 'build') build(m);
     else if (m.type === 'export') {
       if (!last) throw new Error('Nothing built yet.');
-      if (m.buildId != null && m.buildId !== last.id) throw new Error('The model is still being updated. Try again in a moment.');
+      if (m.buildId != null && m.buildId !== last.id) throw new Error('Still updating. Try again.');
       const opts = { title: last.title, bedW: m.bedW || 180, bedD: m.bedD || 180 };
       const bytes = m.format === 'stl' ? writeStl(last.parts)
         : m.format === 'prusa' ? write3mfPrusa(last.parts, opts) : write3mfBambu(last.parts, opts);

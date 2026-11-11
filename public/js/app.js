@@ -26,9 +26,12 @@ const state = {
   built: null,
 };
 let preview = null;
+// Every way of choosing a run (file, example, restored state) takes a ticket; only the newest
+// may finish loading, so a slow file, example or restore can't replace one chosen since.
+let loadTicket = 0;
 
 for (const p of PRINTERS) $('printer').add(new Option(`${p.name} (${p.w} × ${p.d} mm)`, p.id));
-$('printer').add(new Option('Other: enter the plate size', 'custom'));
+$('printer').add(new Option('Other (enter plate size)', 'custom'));
 /** The chosen printer's plate, in mm. */
 function plate() {
   const id = $('printer').value;
@@ -42,18 +45,18 @@ function showPlate() {
   const o = options(), pl = plate();
   $('plate-custom').hidden = pl.id !== 'custom';
   $('stage-notes').hidden = !state.gpx;
-  $('plate-label').textContent = `${pl.name} plate, ${pl.w} × ${pl.d} mm`;
+  $('plate-label').textContent = `${pl.id === 'custom' ? 'Plate' : pl.name}, ${pl.w} × ${pl.d} mm`;
   // Problems with fitting on the plate are shown on the preview itself, so the settings
   // panel never changes length (and jumps) when a setting changes.
   const fit = fits(o.shape, o.sizeMm, pl);
   const room = fit !== 'no' && o.colourMode !== 'one' ? towerRoom(o.shape, o.sizeMm, pl).room : null;
   let note = null, warn = false;
-  if (fit === 'no') { note = 'Too big for this plate. Make it smaller, or use Fit to plate.'; warn = true; }
-  else if (room === 'none') { note = 'No room on this plate for the purge tower that colour changes need. Make it smaller, use Fit to plate, or print in one colour.'; warn = true; }
-  else if (fit === 'turned' && room === 'corner') note = 'Turn the tile a quarter turn and move it into a corner in the slicer, so it fits with room for the purge tower.';
-  else if (fit === 'turned') note = 'Turn the tile a quarter turn in the slicer to fit this plate.';
-  else if (room === 'turned') note = 'Turn the tile a quarter turn in the slicer to leave room for the purge tower.';
-  else if (room === 'corner') note = 'Move the tile into a corner in the slicer to leave room for the purge tower.';
+  if (fit === 'no') { note = 'Too big for this plate. Try Fit to plate.'; warn = true; }
+  else if (room === 'none') { note = 'No room for the purge tower. Try Fit to plate, or one colour.'; warn = true; }
+  else if (fit === 'turned' && room === 'corner') note = 'In the slicer, rotate it 90° and move it to a corner.';
+  else if (fit === 'turned') note = 'In the slicer, rotate it 90° to fit.';
+  else if (room === 'turned') note = 'In the slicer, rotate it 90° to make room for the purge tower.';
+  else if (room === 'corner') note = 'In the slicer, move it to a corner to make room for the purge tower.';
   const cn = $('canvas-note');
   cn.hidden = !note;
   cn.textContent = note || '';
@@ -79,9 +82,10 @@ function status(text, kind = 'busy') {
 }
 
 // ---------- reading the file ----------
-async function loadFile(file, restoredText = null) {
+async function loadFile(file, restoredText = null, ticket = ++loadTicket) {
   try {
     const text = await file.text();
+    if (ticket !== loadTicket) return; // a newer choice has been made since
     const gpx = parseGpx(text);
     const track = gpx.track.map(p => [p.lat, p.lon]);
     let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
@@ -89,11 +93,11 @@ async function loadFile(file, restoredText = null) {
       minLat = Math.min(minLat, la); maxLat = Math.max(maxLat, la);
       minLon = Math.min(minLon, lo); maxLon = Math.max(maxLon, lo);
     }
-    if (maxLon - minLon > 180) throw new Error('Routes that cross the 180° line of longitude are not supported.');
-    if (Math.max(Math.abs(minLat), Math.abs(maxLat)) > 84) throw new Error('Routes this close to the poles are not supported (there is no terrain data).');
+    if (maxLon - minLon > 180) throw new Error('Routes crossing the 180° meridian aren\u2019t supported.');
+    if (Math.max(Math.abs(minLat), Math.abs(maxLat)) > 84) throw new Error('No terrain data this close to the poles.');
     const proj0 = makeProjection((minLat + maxLat) / 2, (minLon + maxLon) / 2);
     const [x0, y0] = proj0.fwd(minLat, minLon), [x1, y1] = proj0.fwd(maxLat, maxLon);
-    if (Math.hypot(x1 - x0, y1 - y0) > 300000) throw new Error('This route spreads over more than 300 km. Trail Print is made for runs and rides up to about that size.');
+    if (Math.hypot(x1 - x0, y1 - y0) > 300000) throw new Error('Routes over 300 km across aren\u2019t supported.');
     state.gpx = gpx;
     state.gpxText = text;
     state.fileName = file.name;
@@ -131,7 +135,7 @@ async function loadFile(file, restoredText = null) {
     rebuild();
     remember();
   } catch (e) {
-    status(e.message || 'Could not read that file.', 'error');
+    if (ticket === loadTicket) status(e.message || 'Could not read that file.', 'error');
   }
 }
 
@@ -180,17 +184,17 @@ function updateNotes() {
   const o = options();
   $('size-out').textContent = `${o.sizeMm} mm`;
   $('margin-out').textContent = `${$('margin').value}%`;
-  const exagText = o.exaggeration == null ? (state.built ? `${state.built.info.exaggeration}× (auto)` : 'Auto') : `${o.exaggeration}×`;
-  $('exag-out').textContent = o.exaggeration == null ? 'Auto' : `${o.exaggeration}×`;
+  const exagText = o.exaggeration == null ? (state.built ? `${state.built.info.exaggeration}× (auto)` : 'auto') : `${o.exaggeration}×`;
+  $('exag-out').textContent = o.exaggeration == null ? (state.built ? `${state.built.info.exaggeration}×` : '') : `${o.exaggeration}×`;
   $('exag').disabled = o.exaggeration == null;
   const f = footprint(o.shape, o.sizeMm);
-  $('size-note').textContent = `${Math.round(f.w)} × ${Math.round(f.d)} mm on the plate.`;
+  $('size-note').textContent = `${Math.round(f.w)} × ${Math.round(f.d)} mm`;
   showPlate();
   // Closed sections show their current values in the heading.
   const pl = plate();
   const shortName = pl.id === 'custom' ? `${pl.w} × ${pl.d} mm plate` : pl.name.replace(/^(Bambu Lab|Prusa|Creality) /, '');
   $('sum-printer').textContent = `${shortName}, ${o.nozzle} mm`;
-  $('sum-terrain').textContent = `Hills ${exagText}, ${$('margin').value}% around`;
+  $('sum-terrain').textContent = `Hills ${exagText}, ${$('margin').value}% margin`;
   $('sum-text').textContent = $('t-title').value || 'None';
   renderSlots();
 }
@@ -229,7 +233,7 @@ $('fit-plate').addEventListener('click', () => {
   const best = largestFit(o.shape, plate(), o.colourMode !== 'one');
   const min = +$('size').min;
   if (!best || best < min) {
-    status(`This plate is too small for a tile of ${min} mm or more${o.colourMode !== 'one' ? ' with room for a purge tower' : ''}.`, 'error');
+    status(`Plate too small for a ${min} mm tile${o.colourMode !== 'one' ? ' and purge tower' : ''}.`, 'error');
     return;
   }
   $('size').value = String(Math.min(+$('size').max, best));
@@ -304,14 +308,14 @@ async function rebuild() {
 
     const demKey = JSON.stringify([bounds, Math.round(Math.log2(noz.spacing * mPerMm) * 2)]);
     if (state.demKey !== demKey) {
-      status('Downloading terrain');
-      const dem = await loadDem(bounds, noz.spacing * mPerMm, { onProgress: f => id === state.buildId && status(`Downloading terrain ${Math.round(f * 100)}%`) });
+      status('Loading terrain');
+      const dem = await loadDem(bounds, noz.spacing * mPerMm, { onProgress: f => id === state.buildId && status(`Loading terrain ${Math.round(f * 100)}%`) });
       if (id !== state.buildId) return;
       state.dem = dem; state.demKey = demKey;
     }
     requestWater(bounds);
     await fontReady;
-    status('Building the model');
+    status('Building model');
     worker.postMessage({
       type: 'build', id,
       origin: state.origin, track: state.track, markers: state.markers,
@@ -326,7 +330,7 @@ async function rebuild() {
 const pending = new Map(); // export id -> { resolve, reject }
 worker.onmessage = e => {
   const m = e.data;
-  if (m.type === 'progress' && m.id === state.buildId) status(`${m.label}`);
+  if (m.type === 'progress' && m.id === state.buildId) status('Building model');
   else if (m.type === 'built' && m.id === state.buildId) {
     const o = options();
     state.built = m;
@@ -349,22 +353,20 @@ worker.onmessage = e => {
 };
 worker.onerror = e => {
   e.preventDefault?.();
-  for (const p of pending.values()) p.reject(new Error('The model builder stopped (the browser may have run out of memory).'));
+  for (const p of pending.values()) p.reject(new Error('Out of memory.'));
   pending.clear();
-  status('The model builder stopped. Try a smaller size or the 0.4 mm nozzle, then reload the page.', 'error');
+  status('Out of memory. Try a smaller size or the 0.4 mm nozzle, then reload.', 'error');
 };
 
 function showInfo(info, warnings) {
   const el = $('model-info');
   el.hidden = false;
   el.innerHTML = `<dl>
-    <dt>Height</dt><dd>${info.heightMm.toFixed(1)} mm at the highest point</dd>
+    <dt>Height</dt><dd>${info.heightMm.toFixed(1)} mm</dd>
     <dt>Scale</dt><dd>1 km = ${info.mmPerKm.toFixed(1)} mm</dd>
-    <dt>Hills</dt><dd>${info.exaggeration}× taller than real life</dd>
-    <dt>Terrain</dt><dd>${Math.round(info.lowM)} m to ${Math.round(info.highM)} m above sea level</dd>
   </dl>`;
   const all = [...warnings];
-  if (state.waterFailed) all.push('Lakes and rivers could not be looked up, so they are not shown.');
+  if (state.waterFailed) all.push('Couldn\u2019t load water: lakes and rivers are missing.');
   const w = $('warnings');
   w.hidden = !all.length;
   w.innerHTML = all.map(x => `<li>${escapeHtml(x)}</li>`).join('');
@@ -394,7 +396,7 @@ async function download(format) {
     const pl = plate();
     const m = await exportFile(format, pl);
     const now = plate();
-    if (!modelIsCurrent() || now.w !== pl.w || now.d !== pl.d) throw new Error('The settings changed while the file was being made. Download again.');
+    if (!modelIsCurrent() || now.w !== pl.w || now.d !== pl.d) throw new Error('Settings changed. Download again.');
     const blob = new Blob([m.bytes], { type: ext === 'stl' ? 'model/stl' : 'model/3mf' });
     // Keep the file's link alive until the next download of the same type: the browser may
     // hold a download for the visitor to confirm (Chrome does this on plain-HTTP pages), and
@@ -446,7 +448,7 @@ async function restore() {
   }
   if (typeof s.exagAuto === 'boolean') $('exag-auto').checked = s.exagAuto;
   updateNotes();
-  await loadFile({ name: s.fileName || 'run.gpx', text: async () => s.gpxText }, s.text);
+  await loadFile({ name: s.fileName || 'run.gpx', text: async () => s.gpxText }, s.text, ticket);
 }
 $('forget').addEventListener('click', async () => {
   forgetting = true;            // nothing may save from here on (timers, place lookup, rebuilds)
@@ -460,27 +462,24 @@ $('forget').addEventListener('click', async () => {
 // The course of the Wharfedale Three Peaks fell race (Kettlewell, Yorkshire Dales): times and
 // heart rate stripped, track thinned. ?demo in the address opens straight into it.
 const DEMO = { url: 'demo/wharfedale-three-peaks.gpx', title: 'Wharfedale Three Peaks', sub: 'Upper Wharfedale, Yorkshire Dales' };
-// Every way of choosing a run (file, example, restored state) takes a ticket; only the
-// newest one may load, so a slow example or restore can't replace a file picked since.
-let loadTicket = 0;
 async function loadDemo() {
   const ticket = ++loadTicket;
   try {
-    status('Loading the example');
+    status('Loading example');
     const res = await fetch(DEMO.url);
     if (!res.ok) throw new Error(`example route ${res.status}`);
     const text = await res.text();
     if (ticket !== loadTicket) return;
     await loadFile({ name: 'wharfedale-three-peaks.gpx', text: async () => text },
-      { values: { title: DEMO.title, sub: DEMO.sub }, edited: { title: false, sub: true } });
+      { values: { title: DEMO.title, sub: DEMO.sub }, edited: { title: false, sub: true } }, ticket);
   } catch (e) {
-    if (ticket === loadTicket) status(`Could not load the example: ${e.message}`, 'error');
+    if (ticket === loadTicket) status(`Couldn\u2019t load the example (${e.message}).`, 'error');
   }
 }
 $('try-demo').addEventListener('click', loadDemo);
 
 // ---------- file input ----------
-$('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) { loadTicket++; loadFile(f); } e.target.value = ''; });
+$('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) loadFile(f); e.target.value = ''; });
 $('change-file').addEventListener('click', () => $('file').click());
 const dz = $('dropzone');
 const stage = document.querySelector('.stage');
@@ -489,7 +488,7 @@ stage.addEventListener('dragleave', () => dz.classList.remove('dragging'));
 stage.addEventListener('drop', e => {
   e.preventDefault(); dz.classList.remove('dragging');
   const f = e.dataTransfer.files[0];
-  if (f) { loadTicket++; loadFile(f); }
+  if (f) loadFile(f);
 });
 for (const b of document.querySelectorAll('[data-view]')) b.addEventListener('click', () => preview?.view(b.dataset.view));
 
