@@ -1,0 +1,9 @@
+{
+  // Static site only: serves public/ (vendor files + _headers made by ./build.sh). No server code.
+  "name": "trail-print",
+  "compatibility_date": "2026-04-01",
+  "build": { "command": "./build.sh" },
+  "assets": { "directory": "./public" },
+  "routes": [{ "pattern": "trail-print.rmoff.net", "custom_domain": true }],
+  "workers_dev": false
+}

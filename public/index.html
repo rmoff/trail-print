@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trail Print</title>
+<meta name="description" content="Turn a run's GPX file into a 3D-printable terrain tile with your route raised on it.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpolygon points='16,1 29,8.5 29,23.5 16,31 3,23.5 3,8.5' fill='%233fae4a'/%3E%3Cpath d='M8 20 C11 12 15 18 18 11 S24 14 25 18' fill='none' stroke='%23d8322a' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+</head>
+<body>
+<header class="masthead">
+  <h1>Trail Print</h1>
+  <p>Turn a run into a 3D-printable map tile.</p>
+</header>
+
+<main class="layout">
+  <section class="stage" aria-label="3D preview">
+    <div id="viewer" class="viewer"></div>
+
+    <div id="dropzone" class="dropzone">
+      <div class="drop-card">
+        <p class="drop-title">Drop a GPX file here</p>
+        <label class="button primary file-button">
+          <input id="file" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml">
+          Choose GPX file
+        </label>
+        <p class="hint">From Strava: open the activity, use the <span aria-label="three dots">⋯</span> menu, then Export GPX.</p>
+        <p class="hint">Your file stays on this device. Only map data for the area around your route is downloaded. Your last run and settings are kept in this browser for next time.</p>
+      </div>
+    </div>
+
+    <div id="status" class="status" role="status" aria-live="polite" hidden>
+      <span class="spinner" aria-hidden="true"></span><span id="status-text">Working</span>
+    </div>
+
+    <div id="plate-label" class="plate-label" hidden></div>
+
+    <div id="view-buttons" class="view-buttons" hidden>
+      <button type="button" data-view="front">Angle</button>
+      <button type="button" data-view="top">Top</button>
+      <button type="button" data-view="under">Underside</button>
+    </div>
+  </section>
+
+  <aside class="panel" id="panel" aria-label="Settings">
+   <div class="panel-body">
+    <div class="run-summary" id="run-summary" hidden>
+      <p class="run-name" id="run-name"></p>
+      <p class="run-meta" id="run-meta"></p>
+      <button type="button" class="link" id="change-file">Use a different file</button>
+      <button type="button" class="link" id="forget">Start again</button>
+    </div>
+
+    <fieldset class="group">
+      <legend>Shape</legend>
+      <div class="segmented" role="radiogroup">
+        <label><input type="radio" name="shape" value="hexagon" checked><span><svg viewBox="0 0 20 20" aria-hidden="true"><polygon points="10,1 18,5.5 18,14.5 10,19 2,14.5 2,5.5"/></svg>Hexagon</span></label>
+        <label><input type="radio" name="shape" value="circle"><span><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5"/></svg>Circle</span></label>
+        <label><input type="radio" name="shape" value="square"><span><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="2" width="16" height="16"/></svg>Square</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>Size</legend>
+      <div class="range-row">
+        <input type="range" id="size" min="80" max="350" step="5" value="150" aria-describedby="size-note" aria-label="Size in millimetres">
+        <output id="size-out">150 mm</output>
+        <button type="button" class="chip" id="fit-plate">Fit to plate</button>
+      </div>
+      <p class="note" id="size-note"></p>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>Colours</legend>
+      <div class="segmented compact" role="radiogroup">
+        <label><input type="radio" name="colours" value="full" checked><span><span class="sws"><i class="sw" style="--c:#3fae4a"></i><i class="sw" style="--c:#2f8fdc"></i><i class="sw" style="--c:#d8322a"></i><i class="sw" style="--c:#f4f4f0"></i></span>Four</span></label>
+        <label><input type="radio" name="colours" value="two"><span><span class="sws"><i class="sw" style="--c:#3fae4a"></i><i class="sw" style="--c:#d8322a"></i></span>Two</span></label>
+        <label><input type="radio" name="colours" value="one"><span><span class="sws"><i class="sw" style="--c:#c9c4b8"></i></span>One</span></label>
+      </div>
+      <p class="note" id="colour-note"></p>
+    </fieldset>
+
+    <details class="section" id="sec-printer">
+      <summary><span class="sec-title">Printer and nozzle</span><span class="sec-value" id="sum-printer"></span></summary>
+      <div class="sec-body">
+        <select id="printer" class="select" aria-label="Printer"></select>
+        <div class="plate-custom" id="plate-custom" hidden>
+          <input type="number" id="plate-w" min="60" max="1000" step="1" value="180" inputmode="numeric" aria-label="Plate width (X) in mm">
+          <span aria-hidden="true">×</span>
+          <input type="number" id="plate-d" min="60" max="1000" step="1" value="180" inputmode="numeric" aria-label="Plate depth (Y) in mm">
+          <span>mm</span>
+        </div>
+        <div class="segmented nozzle" role="radiogroup" aria-label="Nozzle">
+          <label><input type="radio" name="nozzle" value="0.4" checked><span>0.4 mm nozzle</span></label>
+          <label><input type="radio" name="nozzle" value="0.2"><span>0.2 mm, finer</span></label>
+        </div>
+        <p class="note" id="nozzle-note"></p>
+      </div>
+    </details>
+
+    <details class="section" id="sec-terrain">
+      <summary><span class="sec-title">Terrain</span><span class="sec-value" id="sum-terrain"></span></summary>
+      <div class="sec-body">
+        <label class="sub-label" for="exag">Hills</label>
+        <div class="range-row">
+          <input type="range" id="exag" min="1" max="4" step="0.1" value="2" aria-describedby="exag-note">
+          <output id="exag-out">Auto</output>
+          <label class="check"><input type="checkbox" id="exag-auto" checked> Auto</label>
+        </div>
+        <p class="note" id="exag-note">How many times taller than real life the hills are.</p>
+        <label class="sub-label" for="margin">Land around the route</label>
+        <div class="range-row">
+          <input type="range" id="margin" min="5" max="80" step="5" value="15">
+          <output id="margin-out">15%</output>
+        </div>
+      </div>
+    </details>
+
+    <details class="section" id="sec-text">
+      <summary><span class="sec-title">Text on the back</span><span class="sec-value" id="sum-text"></span></summary>
+      <div class="sec-body">
+        <label class="field">Title<input type="text" id="t-title" maxlength="40"></label>
+        <label class="field">Second line<input type="text" id="t-sub" maxlength="50"></label>
+        <label class="field">Third line<input type="text" id="t-stats" maxlength="50"></label>
+        <p class="note">Printed underneath, so it reads when the tile stands on its edge or hangs on a wall.</p>
+      </div>
+    </details>
+
+    <ul id="warnings" class="warnings" hidden></ul>
+    <div id="model-info" class="model-info" hidden></div>
+
+    <details class="section" id="sec-tips">
+      <summary><span class="sec-title">How to print it</span></summary>
+      <div class="sec-body tips">
+        <ol id="slot-list" class="slot-list"></ol>
+        <ul>
+          <li>Layers of 0.12 to 0.16 mm make the slopes smooth.</li>
+          <li>No supports needed. Print it flat, text side down.</li>
+          <li>Colour changes need a purge tower beside the tile (the see-through block on the plate). If the slicer puts it on top of the tile, drag the tower into the free corner.</li>
+          <li>The 3MF opens in Bambu Studio and OrcaSlicer with each part already on its filament. For PrusaSlicer or Cura, use the other 3MF and assign the parts to filaments yourself.</li>
+        </ul>
+      </div>
+    </details>
+
+    <p class="credits">Terrain: <a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles on AWS</a> (<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">sources and credits</a>). Water: <a href="https://openfreemap.org">OpenFreeMap</a>, <a href="https://openmaptiles.org">OpenMapTiles</a>. Water and place names © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors. <a href="https://github.com/rmoff/trail-print">Source code</a> (MIT licence).</p>
+   </div>
+
+    <div class="downloads">
+      <button type="button" class="button primary" id="dl-3mf" disabled>Download 3MF</button>
+      <button type="button" class="button" id="dl-stl" disabled>STL</button>
+      <button type="button" class="link" id="dl-prusa" disabled>3MF for PrusaSlicer or Cura</button>
+    </div>
+  </aside>
+</main>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

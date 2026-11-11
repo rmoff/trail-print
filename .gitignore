@@ -1,0 +1,7 @@
+node_modules/
+test/fixtures/*.gpx
+out/
+.wrangler/
+public/vendor/
+public/_headers
+result.json
