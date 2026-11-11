@@ -56,7 +56,11 @@ function showPlate() {
     note = !best || best < +$('size').min ? 'Too big for this plate, even at the smallest size.' : 'Too big for this plate. Try Fit to plate.';
     warn = true;
   }
-  else if (room === 'none') { note = 'No room for the purge tower. Try Fit to plate, or one colour.'; warn = true; }
+  else if (room === 'none') {
+    const best = largestFit(o.shape, pl, true);
+    note = !best || best < +$('size').min ? 'No room for the purge tower on this plate. Print in one colour.' : 'No room for the purge tower. Try Fit to plate, or one colour.';
+    warn = true;
+  }
   else if (fit === 'turned' && room === 'corner') note = 'In the slicer, rotate it 90° and move it to a corner.';
   else if (fit === 'turned') note = 'In the slicer, rotate it 90° to fit.';
   else if (room === 'turned') note = 'In the slicer, rotate it 90° to make room for the purge tower.';
