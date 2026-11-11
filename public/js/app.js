@@ -51,7 +51,11 @@ function showPlate() {
   const fit = fits(o.shape, o.sizeMm, pl);
   const room = fit !== 'no' && o.colourMode !== 'one' ? towerRoom(o.shape, o.sizeMm, pl).room : null;
   let note = null, warn = false;
-  if (fit === 'no') { note = 'Too big for this plate. Try Fit to plate.'; warn = true; }
+  if (fit === 'no') {
+    const best = largestFit(o.shape, pl, o.colourMode !== 'one');
+    note = !best || best < +$('size').min ? 'Too big for this plate, even at the smallest size.' : 'Too big for this plate. Try Fit to plate.';
+    warn = true;
+  }
   else if (room === 'none') { note = 'No room for the purge tower. Try Fit to plate, or one colour.'; warn = true; }
   else if (fit === 'turned' && room === 'corner') note = 'In the slicer, rotate it 90° and move it to a corner.';
   else if (fit === 'turned') note = 'In the slicer, rotate it 90° to fit.';
@@ -249,7 +253,13 @@ function applyFit() {
   const o = options();
   const best = largestFit(o.shape, plate(), o.colourMode !== 'one');
   const min = +$('size').min, max = +$('size').max;
-  $('size').value = String(best ? Math.max(min, Math.min(max, best)) : min);
+  if (!best || best < min) {
+    // Even the smallest tile doesn't fit: say so (on the preview) rather than pretend to fit.
+    $('fit-plate').checked = false;
+    $('size').value = String(min);
+    return;
+  }
+  $('size').value = String(Math.min(max, best));
 }
 $('size').addEventListener('input', () => { $('fit-plate').checked = false; });
 
