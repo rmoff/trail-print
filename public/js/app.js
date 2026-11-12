@@ -115,8 +115,7 @@ async function loadFile(file, restoredText = null, ticket = ++loadTicket, preset
     state.fileName = file.name;
     state.track = track;
     state.origin = [(minLat + maxLat) / 2, (minLon + maxLon) / 2];
-    state.built = null;
-    state.shownOptions = null;
+    state.built = null; // (shownOptions stays: the old model is on screen until the new one lands)
     setExportsEnabled(false);
     const first = state.track[0], lastPt = state.track[state.track.length - 1];
     state.markers = [first, lastPt, ...gpx.waypoints.map(w => [w.lat, w.lon])];
