@@ -42,7 +42,10 @@ function plate() {
 }
 /** Plate drawn under the tile, with a see-through purge tower where it fits (colour prints). */
 function showPlate() {
-  const o = options(), pl = plate();
+  // Everything drawn about the tile (where it sits, the tower, fit warnings) follows the model
+  // on screen, so a new shape and its new position appear together when the build lands.
+  // Only the plate itself follows the printer setting straight away.
+  const o = state.shownOptions || options(), pl = plate();
   $('plate-custom').hidden = pl.id !== 'custom';
   $('stage-notes').hidden = !state.gpx;
   $('plate-label').textContent = `${pl.id === 'custom' ? 'Plate' : pl.name}, ${pl.w} × ${pl.d} mm`;
@@ -113,6 +116,7 @@ async function loadFile(file, restoredText = null, ticket = ++loadTicket, preset
     state.track = track;
     state.origin = [(minLat + maxLat) / 2, (minLon + maxLon) / 2];
     state.built = null;
+    state.shownOptions = null;
     setExportsEnabled(false);
     const first = state.track[0], lastPt = state.track[state.track.length - 1];
     state.markers = [first, lastPt, ...gpx.waypoints.map(w => [w.lat, w.lon])];
@@ -350,6 +354,7 @@ async function rebuild() {
     requestWater(bounds);
     await fontReady;
     status('Building model');
+    buildOptions.set(id, o);
     worker.postMessage({
       type: 'build', id,
       origin: state.origin, track: state.track, markers: state.markers,
@@ -366,12 +371,15 @@ async function rebuild() {
 }
 
 const pending = new Map(); // export id -> { resolve, reject }
+const buildOptions = new Map(); // build id -> the settings it was built with
 worker.onmessage = e => {
   const m = e.data;
   if (m.type === 'progress' && m.id === state.buildId) status('Building model');
   else if (m.type === 'built' && m.id === state.buildId) {
     const o = options();
     state.built = m;
+    state.shownOptions = buildOptions.get(m.id) || null;
+    buildOptions.clear();
     preview.setParts(m.parts, o.sizeMm);
     showInfo(m.info, m.warnings);
     setExportsEnabled(timer === null);
@@ -567,4 +575,4 @@ if (params.has('demo')) {
   restore().then(loaded => { if (!loaded) showIntro(); });
 }
 // For automated tests: window.__trail exposes state.
-window.__trail = { state, loadFile };
+window.__trail = { state, loadFile, get preview() { return preview; } };
