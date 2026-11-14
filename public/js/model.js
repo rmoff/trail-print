@@ -3,7 +3,7 @@
 
 import earcut from '../vendor/earcut.js';
 import { Mesh } from './mesh.js';
-import { shapeCorners, shapeNorm } from './geo.js';
+import { shapeCorners, shapeNorm, shapeApothem } from './geo.js';
 
 export const NOZZLES = {
   0.4: { spacing: 0.5, routeWidth: 1.2, routeHeight: 1.2, embed: 0.8, marker: 3.2, markerExtra: 0.8, textDepth: 0.6, waterDepth: 0.6, minFont: 5.5 },
@@ -256,6 +256,10 @@ function wallRing(mesh, botIds, topIds, side) {
  * @param o.colourMode   'full' | 'two' | 'one'
  * @param o.exaggeration number, or null for automatic
  * @param o.baseMm       thickness under the lowest point
+ * @param o.lowM         optional: height (m) that sits at baseMm, instead of the lowest point
+ *                       (pieces built separately then line up); no ground may lie below it
+ * @param o.routeFlatEnds optional { start, end }: square route end (no round cap), for a
+ *                       route cut at the tile edge so it meets the next piece flush
  * @param o.fit          { cx, cy, radius } in projected metres
  * @param o.elevation    (xm, ym) => metres above sea level (projected metres in)
  * @param o.isWater      (xm, ym) => boolean (lakes from the map), optional
@@ -317,6 +321,10 @@ export function buildModel(o) {
   // 3. Vertical scale.
   let eMin = Infinity, eMax = -Infinity;
   for (let i = 0; i < L.count; i++) { if (elev[i] < eMin) eMin = elev[i]; if (elev[i] > eMax) eMax = elev[i]; }
+  if (Number.isFinite(o.lowM)) {
+    if (eMin < o.lowM) throw new Error(`Ground at ${eMin.toFixed(1)} m is below lowM (${o.lowM} m)`);
+    eMin = o.lowM;
+  }
   const realRelief = (eMax - eMin) * s;
   let exaggeration = o.exaggeration;
   if (!(exaggeration > 0)) {
@@ -370,7 +378,7 @@ export function buildModel(o) {
   }
 
   // Text: keep only letters that sit inside the tile (with a margin) and triangulate cleanly.
-  const cosK = shape.circle ? 1 : Math.cos(Math.PI / shape.K);
+  const cosK = shapeApothem(shape);
   const textLimit = R - 2.5 / cosK;
   const glyphs = [];
   const textDropped = []; // { line, reason: 'edge' | 'shape' | 'all' }
@@ -516,7 +524,9 @@ export function buildModel(o) {
     route.triAway(prev[0], prev[2], prev[3], prev.c[0] - dx, prev.c[1] - dy, prev.c[2]);
   }
   // Round joints so corners have no notches.
-  for (const [x, y] of routeMm) {
+  const flatEnds = o.routeFlatEnds || {};
+  for (const [i, [x, y]] of routeMm.entries()) {
+    if ((i === 0 && flatEnds.start) || (i === routeMm.length - 1 && flatEnds.end)) continue;
     const [zb, zt] = strip(x, y);
     addCylinder(route, x, y, half, 16, zb, zt);
   }

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { unzipSync, strFromU8 } from '../public/vendor/fflate.js';
-import { SHAPES, fitShape, makeProjection } from '../public/js/geo.js';
+import { SHAPES, fitShape, makeProjection, rectangleShape, shapeNorm, shapeApothem } from '../public/js/geo.js';
 import { buildModel, buildLattice } from '../public/js/model.js';
 import { parseFont, layoutText } from '../public/js/text.js';
 import { write3mfBambu, write3mfPrusa, writeStl } from '../public/js/export.js';
@@ -54,6 +54,55 @@ for (const shapeKey of Object.keys(SHAPES)) {
     });
   }
 }
+
+test('rectangle shape: norm, apothem, lattice area', () => {
+  const r = rectangleShape(160, 80);
+  const R = r.sizeToR(160);
+  assert.ok(Math.abs(R - Math.hypot(80, 40)) < 1e-9);
+  assert.ok(Math.abs(shapeNorm(r, 80, 0) - R) < 1e-9, 'end of the long axis is on the edge');
+  assert.ok(Math.abs(shapeNorm(r, 0, 40) - R) < 1e-9, 'end of the short axis is on the edge');
+  assert.ok(Math.abs(shapeNorm(r, 80, 40) - R) < 1e-9, 'corner');
+  assert.ok(Math.abs(shapeApothem(r) - 40 / R) < 1e-9);
+  // Regular shapes keep their old values.
+  assert.ok(Math.abs(shapeApothem(SHAPES.hexagon) - Math.cos(Math.PI / 6)) < 1e-12);
+  const L = buildLattice(r, R, 12);
+  let area = 0;
+  for (let t = 0; t < L.tris.length; t += 3) {
+    const [a, b, c] = [L.tris[t], L.tris[t + 1], L.tris[t + 2]];
+    area += ((L.x[b] - L.x[a]) * (L.y[c] - L.y[a]) - (L.y[b] - L.y[a]) * (L.x[c] - L.x[a])) / 2;
+  }
+  assert.ok(Math.abs(area - 160 * 80) < 1e-6);
+});
+
+test('rectangle model is closed; lowM fixes the base height', () => {
+  const shape = rectangleShape(160, 80);
+  const R = shape.sizeToR(160);
+  const fit = { cx: 0, cy: 0, radius: 1.3 * Math.hypot(1400, 700) };
+  const { glyphs } = layoutText(font, [{ text: 'Dales Way 2026', size: 8 }], { maxWidth: 100, minSize: 5 });
+  const make = lowM => buildModel({ shape, sizeMm: 160, nozzle: 0.4, colourMode: 'full', exaggeration: 3, baseMm: 4,
+    fit, elevation, isWater, route, markers: [route[0]], glyphs, lowM });
+  const m = make(0);
+  for (const p of m.parts) {
+    assert.equal(p.mesh.openEdges(), 0, `${p.name} has open or mis-oriented edges`);
+    assert.ok(p.mesh.volume() > 0, p.name);
+    const b = p.mesh.bounds();
+    assert.ok(b.max[0] - b.min[0] <= 160.01 && b.max[1] - b.min[1] <= 80.01, `${p.name} outside the rectangle`);
+  }
+  assert.equal(m.info.textDropped.length, 0);
+  assert.throws(() => make(1000), /below lowM/);
+  // A route cut at the right-hand edge, with a square end there, stops exactly at the edge.
+  const edgeM = 80 / (R / fit.radius); // right edge in metres
+  const cut = buildModel({ shape, sizeMm: 160, nozzle: 0.4, colourMode: 'full', exaggeration: 3, baseMm: 4, fit, elevation,
+    route: [[0, 0], [edgeM - 300, 50], [edgeM, 50]], markers: [], routeFlatEnds: { end: true } });
+  const rt = cut.parts.find(p => p.key === 'route').mesh;
+  assert.equal(rt.openEdges(), 0);
+  assert.ok(Math.abs(rt.bounds().max[0] - 80) < 1e-6, `route ends at ${rt.bounds().max[0]}`);
+  // Ground at about 200 m, so sea level as the base makes it taller than the lowest-point default.
+  const s = R / fit.radius;
+  const d = make(undefined);
+  assert.equal(m.info.lowM, 0);
+  assert.ok(Math.abs((m.info.heightMm - d.info.heightMm) - d.info.lowM * s * 3) < 0.05);
+});
 
 test('0.2 mm nozzle gives a finer mesh and a thinner route', () => {
   const coarse = build('hexagon', 'full', 0.4), fine = build('hexagon', 'full', 0.2);

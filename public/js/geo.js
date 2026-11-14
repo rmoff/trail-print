@@ -24,7 +24,21 @@ export const SHAPES = {
   square: { label: 'Square', K: 4, startDeg: 45, circle: false, sizeToR: s => s / Math.SQRT2 },
 };
 
+/**
+ * A w x d rectangle (any proportions) as a shape: corners on the unit circle, so R is still
+ * the circumradius. Size is the long side (w).
+ */
+export function rectangleShape(w, d) {
+  const h = Math.hypot(w, d);
+  return {
+    label: 'Rectangle', K: 4, startDeg: 0, circle: false,
+    corners: [[w / h, d / h], [-w / h, d / h], [-w / h, -d / h], [w / h, -d / h]],
+    sizeToR: s => (s * h) / (2 * w),
+  };
+}
+
 export function shapeCorners(shape) {
+  if (shape.corners) return shape.corners.map(c => [...c]);
   const out = [];
   for (let k = 0; k < shape.K; k++) {
     const a = (shape.startDeg + (360 * k) / shape.K) * DEG;
@@ -36,6 +50,20 @@ export function shapeCorners(shape) {
 /** How far out a point is, as the circumradius of the smallest shape (centred at 0) containing it. */
 export function shapeNorm(shape, x, y) {
   if (shape.circle) return Math.hypot(x, y);
+  if (shape.corners) {
+    // Any convex shape: for each edge, distance along its outward normal over the edge's
+    // distance from the centre.
+    let m = 0;
+    const c = shape.corners;
+    for (let k = 0; k < c.length; k++) {
+      const [ax, ay] = c[k], [bx, by] = c[(k + 1) % c.length];
+      let nx = by - ay, ny = ax - bx;
+      const len = Math.hypot(nx, ny); nx /= len; ny /= len;
+      const dist = ax * nx + ay * ny;
+      m = Math.max(m, (x * nx + y * ny) / Math.abs(dist) * Math.sign(dist));
+    }
+    return m;
+  }
   const apothem = Math.cos(Math.PI / shape.K);
   let m = 0;
   for (let k = 0; k < shape.K; k++) {
@@ -43,6 +71,16 @@ export function shapeNorm(shape, x, y) {
     m = Math.max(m, (x * Math.cos(a) + y * Math.sin(a)) / apothem);
   }
   return m;
+}
+
+/** Nearest edge's distance from the centre, for a shape with circumradius 1. */
+export function shapeApothem(shape) {
+  if (shape.circle) return 1;
+  if (!shape.corners) return Math.cos(Math.PI / shape.K);
+  return Math.min(...shape.corners.map((_, k) => {
+    const [ax, ay] = shape.corners[k], [bx, by] = shape.corners[(k + 1) % shape.corners.length];
+    return Math.abs(ax * by - ay * bx) / Math.hypot(bx - ax, by - ay);
+  }));
 }
 
 /**
